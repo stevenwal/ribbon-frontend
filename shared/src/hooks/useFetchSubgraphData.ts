@@ -40,13 +40,17 @@ import {
 import { usePendingTransactions } from "./pendingTransactionsContext";
 
 const useFetchSubgraphData = () => {
-  const web3Context = useWeb3React();
-  const account = impersonateAddress || web3Context.account;
+  const { account: acc, chainId } = useWeb3React();
+  const account = impersonateAddress || acc;
   const [data, setData] =
     useState<SubgraphDataContextType>(defaultSubgraphData);
   const { transactionsCounter } = usePendingTransactions();
 
   const doMulticall = useCallback(async () => {
+    if (!chainId) {
+      return;
+    }
+
     if (!isProduction()) {
       console.time("Subgraph Data Fetch");
     }
@@ -54,7 +58,7 @@ const useFetchSubgraphData = () => {
     const responsesAcrossVersions = Object.fromEntries(
       await Promise.all(
         VaultVersionList.map(async (version) => {
-          const response = await axios.post(getSubgraphURIForVersion(version), {
+          const response = await axios.post(getSubgraphURIForVersion(version, chainId), {
             query: `{
                 ${
                   account
@@ -89,19 +93,15 @@ const useFetchSubgraphData = () => {
         responsesAcrossVersions
       ),
       rbnToken: resolveRBNTokenSubgraphResponse(responsesAcrossVersions),
-      rbnTokenAccount: resolveRBNTokenAccountSubgraphResponse(
-        responsesAcrossVersions
-      ),
-      vaultPriceHistory: resolveVaultPriceHistorySubgraphResponse(
-        responsesAcrossVersions
-      ),
+      rbnTokenAccount: resolveRBNTokenAccountSubgraphResponse(responsesAcrossVersions),
+      vaultPriceHistory: resolveVaultPriceHistorySubgraphResponse(responsesAcrossVersions),
       loading: false,
     }));
 
     if (!isProduction()) {
       console.timeEnd("Subgraph Data Fetch");
     }
-  }, [account]);
+  }, [account, chainId]);
 
   useEffect(() => {
     doMulticall();
