@@ -19,7 +19,7 @@ export enum CHAINID {
   AVAX_MAINNET = 43114,
 }
 
-export type NETWORK_NAMES  = "mainnet" | "kovan" | "fuji" | "avax";
+export type NETWORK_NAMES = "mainnet" | "kovan" | "fuji" | "avax";
 export const NETWORKS: Record<number, NETWORK_NAMES> = {
   [CHAINID.ETH_MAINNET]: "mainnet",
   [CHAINID.ETH_KOVAN]: "kovan",
@@ -27,11 +27,22 @@ export const NETWORKS: Record<number, NETWORK_NAMES> = {
   [CHAINID.AVAX_MAINNET]: "avax",
 };
 
-export const isEthNetwork = (chainId: number): boolean =>
-  chainId === CHAINID.ETH_MAINNET || chainId === CHAINID.ETH_KOVAN
+// export const ENABLED_NETWORKS: NETWORK_NAMES[] = ["mainnet", "avax"];
+export const ENABLED_NETWORKS: NETWORK_NAMES[] = ["avax"];
 
-export const NATIVE_TOKENS = ['WETH', 'WAVAX'];
-export const isNativeToken = (token: string): boolean => NATIVE_TOKENS.includes(token)
+export const NETWORK_TO_NATIVE_TOKENS: Record<NETWORK_NAMES, Assets> = {
+  mainnet: "WETH",
+  kovan: "WETH",
+  avax: "WAVAX",
+  fuji: "WAVAX",
+};
+
+export const isEthNetwork = (chainId: number): boolean =>
+  chainId === CHAINID.ETH_MAINNET || chainId === CHAINID.ETH_KOVAN;
+
+export const NATIVE_TOKENS = ["WETH", "WAVAX"];
+export const isNativeToken = (token: string): boolean =>
+  NATIVE_TOKENS.includes(token);
 
 export const VaultVersionList = ["v2", "v1"] as const;
 export type VaultVersion = typeof VaultVersionList[number];
@@ -54,7 +65,9 @@ const PutThetaVault: VaultOptions[] = [
 ];
 
 // @ts-ignore
-export const VaultList: VaultOptions[] = !isProduction() ? FullVaultList : FullVaultList.filter((vault) => !ProdExcludeVault.includes(vault));
+export const VaultList: VaultOptions[] = !isProduction()
+  ? FullVaultList
+  : FullVaultList.filter((vault) => !ProdExcludeVault.includes(vault));
 
 export const GAS_LIMITS: {
   [vault in VaultOptions]: Partial<{
@@ -152,7 +165,7 @@ export const VaultAddressMap: {
     v1?: string;
     v2?: string;
     chainId: number;
-  }
+  };
 } = {
   "rUSDC-ETH-P-THETA": isDevelopment()
     ? {
@@ -262,20 +275,21 @@ export const VaultNameOptionMap: { [name in VaultName]: VaultOptions } = {
 };
 
 export const BLOCKCHAIN_EXPLORER_NAME: Record<number, string> = {
-  [CHAINID.ETH_MAINNET]: 'Etherscan',
-  [CHAINID.ETH_KOVAN]: 'Etherscan',
-  [CHAINID.AVAX_MAINNET]: 'SnowTrace',
-  [CHAINID.AVAX_FUJI]: 'SnowTrace',
-}
+  [CHAINID.ETH_MAINNET]: "Etherscan",
+  [CHAINID.ETH_KOVAN]: "Etherscan",
+  [CHAINID.AVAX_MAINNET]: "SnowTrace",
+  [CHAINID.AVAX_FUJI]: "SnowTrace",
+};
 
 export const BLOCKCHAIN_EXPLORER_URI: Record<number, string> = {
   [CHAINID.ETH_MAINNET]: "https://etherscan.io",
   [CHAINID.ETH_KOVAN]: "https://kovan.etherscan.io",
   [CHAINID.AVAX_MAINNET]: "https://snowtrace.io",
   [CHAINID.AVAX_FUJI]: "https://testnet.snowtrace.io",
-}
+};
 
-export const getEtherscanURI = (chainId: number) => BLOCKCHAIN_EXPLORER_URI[chainId as CHAINID]
+export const getEtherscanURI = (chainId: number) =>
+  BLOCKCHAIN_EXPLORER_URI[chainId as CHAINID];
 
 export const getSubgraphURIForVersion = (vaultVersion: VaultVersion) => {
   switch (vaultVersion) {
@@ -442,7 +456,7 @@ export const getERC20TokenAddress = (token: ERC20Token, chainId: number) => {
   return isDevelopment()
     ? (addresses[network].assets as any)[token]
     : (addresses[network].assets as any)[token];
-}
+};
 
 export const LidoCurvePoolAddress = isDevelopment()
   ? ""
