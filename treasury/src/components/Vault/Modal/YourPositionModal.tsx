@@ -24,6 +24,7 @@ import {
 } from "../../../utils/asset";
 import colors from "shared/lib/designSystem/colors";
 import useVaultAccounts from "../../../hooks/useVaultAccounts";
+import useTransactions from "../../../hooks/useTransactions";
 
 import { formatBigNumber, isPracticallyZero } from "shared/lib/utils/math";
 import { BigNumber } from "ethers";
@@ -53,13 +54,13 @@ const YourPositionModal: React.FC = () => {
   const vaultVersion = vaultPositionModal.vaultVersion;
   const premiumDecimals = getAssetDecimals("USDC");
   const activities = useVaultActivity(vaultOption!, vaultVersion);
+  const { transactions, loading: transactionsLoading } = useTransactions();
 
-  const totalYields = activities.activities.map((activity) => {
-    return (activity.type == "sales")
-      ? Number(activity.premium)
-      :0
-  }).reduce((totalYield, roundlyYield) => totalYield + roundlyYield, 0) 
-  / (10 ** premiumDecimals)  
+  const totalYield = useMemo(() => {
+    return transactions.filter(transaction => transaction.type === "distribute")
+      .reduce((total, transaction) =>
+        total.add(transaction.amount), BigNumber.from(0))
+  }, [transactions])
 
   const color = getVaultColor(vaultOption);
   const asset = getAssets(vaultOption);
@@ -191,7 +192,7 @@ const YourPositionModal: React.FC = () => {
               <div className="d-flex w-100 align-items-center ">
                 <SecondaryText>Yield Earned</SecondaryText>
                 <Title className="ml-auto">
-                  {totalYields.toFixed(2)}{" "}
+                  {parseFloat(formatBigNumber(totalYield, premiumDecimals)).toFixed(2)}{" "}
                   {getAssetDisplay("USDC")}
                 </Title>
               </div>
