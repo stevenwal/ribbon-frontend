@@ -42,9 +42,10 @@ import { usePendingTransactions } from "./pendingTransactionsContext";
 
 const useFetchSubgraphData = () => {
   const web3Context = useWeb3React();
-  const account = isProduction()
-    ? impersonateAddress || web3Context.account
-    : "0xb793898783802543D17FcCd78BE611241501649d";
+  // const account = isProduction()
+  //   ? impersonateAddress || web3Context.account
+  //   : "0xb793898783802543D17FcCd78BE611241501649d";
+  const account = impersonateAddress || web3Context.account;
 
   const [data, setData] =
     useState<SubgraphDataContextType>(defaultSubgraphData);
