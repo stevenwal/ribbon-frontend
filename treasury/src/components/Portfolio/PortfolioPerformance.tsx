@@ -585,7 +585,7 @@ const PortfolioPerformance = () => {
       <PerformanceColumn>
         <KPIColumn>
           <SecondaryText fontSize={12} className="w-100">
-            Yield Earned
+            Total Yield Earned
           </SecondaryText>
           <KPI>
             <KPIText
