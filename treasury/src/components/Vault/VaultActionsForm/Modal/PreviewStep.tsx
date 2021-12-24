@@ -118,12 +118,6 @@ const PreviewStep: React.FC<{
 
     switch (actionType) {
       case ACTIONS.deposit:
-        actionDetails.push({
-          key: "Approx. APY",
-          value: `${
-            latestAPY.fetched ? latestAPY.res.toFixed(2) : "0.00"
-          }% APY`,
-        });
         break;
       case ACTIONS.withdraw:
         switch (vaultVersion) {
@@ -425,8 +419,7 @@ const PreviewStep: React.FC<{
                   color={color}
                 >
                   <PrimaryText fontSize={14} lineHeight={20} color={color}>
-                    Your funds will be deployed in the vault’s next weekly
-                    strategy at 11am UTC on Friday
+                    Your funds will be deployed in the vault’s strategy in the next round
                   </PrimaryText>
                 </WarningContainer>
               );
