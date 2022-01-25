@@ -1,27 +1,36 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { BigNumber } from "ethers";
-import { useWeb3React } from "@web3-react/core";
+import { useWeb3Wallet } from "webapp/lib/hooks/useWeb3Wallet";
 
-import { ACTIONS, Steps, STEPS } from "./types";
-import useVault from "../../../../hooks/useVault";
+import {
+  ACTIONS,
+  Steps,
+  STEPS,
+} from "webapp/lib/components/Vault/VaultActionsForm/Modal/types";
+import useVault from "shared/lib/hooks/useVault";
 import PreviewStep from "./PreviewStep";
-import TransactionStep from "./TransactionStep";
-import FormStep from "./FormStep";
+import TransactionStep from "webapp/lib/components/Vault/VaultActionsForm/Modal/TransactionStep";
+import FormStep from "webapp/lib/components/Vault/VaultActionsForm/Modal/FormStep";
 import {
   getAssets,
   isNativeToken,
   VaultAddressMap,
   VaultOptions,
   VaultVersion,
+  LidoCurvePoolAddress,
   VaultAllowedDepositAssets,
-} from "../../../../constants/constants";
-import { isETHVault } from "../../../../utils/vault";
-import { usePendingTransactions } from "../../../../hooks/pendingTransactionsContext";
-import useVaultActionForm from "../../../../hooks/useVaultActionForm";
+  CurveSwapSlippage,
+} from "shared/lib/constants/constants";
+import { isETHVault } from "shared/lib/utils/vault";
+import { amountAfterSlippage } from "shared/lib/utils/math";
+import { usePendingTransactions } from "shared/lib/hooks/pendingTransactionsContext";
+import useVaultActionForm from "webapp/lib/hooks/useVaultActionForm";
 import { parseUnits } from "@ethersproject/units";
-import { useVaultData, useV2VaultData } from "../../../../hooks/web3DataContext";
-import useV2Vault from "../../../../hooks/useV2Vault";
-import WarningStep from "./WarningStep";
+import { useVaultData, useV2VaultData } from "shared/lib/hooks/web3DataContext";
+import useV2Vault from "shared/lib/hooks/useV2Vault";
+import WarningStep from "webapp/lib/components/Vault/VaultActionsForm/Modal/WarningStep";
+import { getCurvePool } from "shared/lib/hooks/useCurvePool";
+import useVaultAccounts from "shared/lib/hooks/useVaultAccounts";
 
 export interface ActionStepsProps {
   vault: {
@@ -43,7 +52,7 @@ const ActionSteps: React.FC<ActionStepsProps> = ({
   onChangeStep,
   skipToPreview = false,
 }) => {
-  const { library } = useWeb3React();
+  const { ethereumProvider } = useWeb3Wallet();
   const { vaultActionForm, resetActionForm, withdrawMetadata } =
     useVaultActionForm(vaultOption);
 
@@ -66,7 +75,11 @@ const ActionSteps: React.FC<ActionStepsProps> = ({
     withdrawMetadata.instantWithdrawBalance,
   ]);
   const [txhash, setTxhash] = useState("");
-  const v1Vault = useVault(vaultOption);
+  const v1Vault = useVault(
+    vaultActionForm.actionType === ACTIONS.migrate
+      ? vaultActionForm.migrateSourceVault || vaultOption
+      : vaultOption
+  );
   const v2Vault = useV2Vault(vaultOption);
   const { pendingTransactions, addPendingTransaction } =
     usePendingTransactions();
@@ -81,6 +94,7 @@ const ActionSteps: React.FC<ActionStepsProps> = ({
       withdrawals,
     },
   } = useV2VaultData(vaultOption);
+  const { vaultAccounts: v1VaultAccounts } = useVaultAccounts("v1");
 
   const asset = useMemo(() => {
     switch (vaultActionForm.actionType) {
@@ -96,7 +110,10 @@ const ActionSteps: React.FC<ActionStepsProps> = ({
 
   const vaultBalanceInAsset = useMemo(() => {
     if (vaultActionForm.actionType === "migrate") {
-      return v1VaultBalanceInAsset;
+      return (
+        v1VaultAccounts[vaultActionForm.migrateSourceVault || vaultOption]
+          ?.totalBalance || BigNumber.from(0)
+      );
     }
     switch (vaultVersion) {
       case "v1":
@@ -109,10 +126,13 @@ const ActionSteps: React.FC<ActionStepsProps> = ({
   }, [
     depositBalanceInAsset,
     lockedBalanceInAsset,
+    v1VaultAccounts,
     v1VaultBalanceInAsset,
+    vaultOption,
     vaultVersion,
     withdrawals,
     vaultActionForm.actionType,
+    vaultActionForm.migrateSourceVault,
   ]);
 
   const cleanupEffects = useCallback(() => {
@@ -181,7 +201,17 @@ const ActionSteps: React.FC<ActionStepsProps> = ({
         let shares: BigNumber;
         switch (vaultActionForm.actionType) {
           case ACTIONS.deposit:
-            res = await(isNativeToken(asset) ? vault.depositETH({ value: amountStr }) : vault.deposit(amountStr));
+            switch (vaultOption) {
+              case "rstETH-THETA":
+                res = await (isNativeToken(asset)
+                  ? vault.depositETH({ value: amountStr })
+                  : vault.depositYieldToken(amountStr));
+                break;
+              default:
+                res = await (isNativeToken(asset)
+                  ? vault.depositETH({ value: amountStr })
+                  : vault.deposit(amountStr));
+            }
             break;
           case ACTIONS.withdraw:
             /** Handle different version of withdraw separately */
@@ -203,7 +233,31 @@ const ActionSteps: React.FC<ActionStepsProps> = ({
                 switch (vaultActionForm.withdrawOption) {
                   /** Instant withdraw for V2 */
                   case "instant":
-                    res = await vault.withdrawInstantly(amountStr);
+                    switch (vaultActionForm.vaultOption) {
+                      case "rstETH-THETA":
+                        /**
+                         * Default slippage of 0.3%
+                         */
+                        const curvePool = getCurvePool(
+                          ethereumProvider,
+                          LidoCurvePoolAddress
+                        );
+
+                        const minOut = await curvePool.get_dy(
+                          1,
+                          0,
+                          amountAfterSlippage(amount, CurveSwapSlippage),
+                          {
+                            gasLimit: 400000,
+                          }
+                        );
+                        res = await vault.withdrawInstantly(amountStr, minOut, {
+                          gasLimit: 220000,
+                        });
+                        break;
+                      default:
+                        res = await vault.withdrawInstantly(amountStr);
+                    }
                     break;
 
                   /** Initiate withdrawal for v2 */
@@ -214,7 +268,30 @@ const ActionSteps: React.FC<ActionStepsProps> = ({
                     res = await vault.initiateWithdraw(shares);
                     break;
                   case "complete":
-                    res = await vault.completeWithdraw();
+                    switch (vaultActionForm.vaultOption) {
+                      case "rstETH-THETA":
+                        /**
+                         * Default slippage of 0.3%
+                         */
+                        const curvePool = getCurvePool(
+                          ethereumProvider,
+                          LidoCurvePoolAddress
+                        );
+                        const minOut = await curvePool.get_dy(
+                          1,
+                          0,
+                          amountAfterSlippage(amount, CurveSwapSlippage),
+                          {
+                            gasLimit: 400000,
+                          }
+                        );
+                        res = await vault.completeWithdraw(minOut, {
+                          gasLimit: 400000,
+                        });
+                        break;
+                      default:
+                        res = await vault.completeWithdraw();
+                    }
                     break;
                 }
                 break;

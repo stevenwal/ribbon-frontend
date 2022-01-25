@@ -1,4 +1,4 @@
-import { useWeb3React } from "@web3-react/core";
+import { useWeb3Wallet } from "../../hooks/useWeb3Wallet";
 import React, { useCallback, useMemo, useState } from "react";
 import styled from "styled-components";
 import {
@@ -20,8 +20,9 @@ import {
 import useBalances from "shared/lib/hooks/useBalances";
 import useTextAnimation from "shared/lib/hooks/useTextAnimation";
 import { assetToFiat, formatBigNumber } from "shared/lib/utils/math";
-import PerformanceChart from "../PerformanceChart/PerformanceChart";
-import { HoverInfo } from "../PerformanceChart/types";
+import PerformanceChart, {
+  HoverInfo,
+} from "shared/lib/components/Common/PerformanceChart";
 import sizes from "shared/lib/designSystem/sizes";
 import useConnectWalletModal from "shared/lib/hooks/useConnectWalletModal";
 import { getAssets } from "shared/lib/constants/constants";
@@ -152,7 +153,7 @@ const dateFilterOptions = ["1w", "1m", "all"] as const;
 type dateFilterType = typeof dateFilterOptions[number];
 
 const PortfolioPerformance = () => {
-  const { active } = useWeb3React();
+  const { active } = useWeb3Wallet();
   const { prices: assetsPrice, loading: assetsPriceLoading } = useAssetsPrice();
   const { searchAssetPriceFromTimestamp } = useAssetsPriceHistory();
   const [hoveredBalanceUpdateIndex, setHoveredBalanceUpdateIndex] =
@@ -515,7 +516,7 @@ const PortfolioPerformance = () => {
     }
 
     return RBNTokenAccount
-      ? formatBigNumber(RBNTokenAccount.balance, 18)
+      ? formatBigNumber(RBNTokenAccount.totalBalance, 18)
       : "0.00";
   }, [RBNTokenAccount, active, animatedLoadingText, loading]);
 

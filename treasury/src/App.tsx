@@ -3,12 +3,13 @@ import { useEffect } from "react";
 import smoothscroll from "smoothscroll-polyfill";
 
 import RootApp from "./components/RootApp";
-import { Web3ContextProvider } from "./hooks/web3Context";
+import { Web3ContextProvider } from "shared/lib/hooks/web3Context";
 import { getLibrary } from "shared/lib/utils/getLibrary";
-import { Web3DataContextProvider } from "./hooks/web3DataContext";
-import { SubgraphDataContextProvider } from "./hooks/subgraphDataContext";
-import { PendingTransactionsContextProvider } from "./hooks/pendingTransactionsContext";
-import { AssetPriceContextProvider } from "./hooks/assetPriceContext";
+import { Web3DataContextProvider } from "shared/lib/hooks/web3DataContext";
+import { SubgraphDataContextProvider } from "shared/lib/hooks/subgraphDataContext";
+import { PendingTransactionsContextProvider } from "shared/lib/hooks/pendingTransactionsContext";
+import { ExternalAPIDataContextProvider } from "shared/lib/hooks/externalAPIDataContext";
+import { ChainContextProvider } from "webapp/lib/hooks/chainContext";
 
 function App() {
   useEffect(() => {
@@ -16,19 +17,21 @@ function App() {
   }, []);
 
   return (
-    <Web3ContextProvider>
-      <Web3ReactProvider getLibrary={getLibrary}>
-        <PendingTransactionsContextProvider>
-          <Web3DataContextProvider>
-            <SubgraphDataContextProvider>
-              <AssetPriceContextProvider>
-                <RootApp />
-              </AssetPriceContextProvider>
-            </SubgraphDataContextProvider>
-          </Web3DataContextProvider>
-        </PendingTransactionsContextProvider>
-      </Web3ReactProvider>
-    </Web3ContextProvider>
+    <ChainContextProvider>
+      <Web3ContextProvider>
+        <Web3ReactProvider getLibrary={getLibrary}>
+          <PendingTransactionsContextProvider>
+            <Web3DataContextProvider>
+              <SubgraphDataContextProvider>
+                <ExternalAPIDataContextProvider>
+                  <RootApp />
+                </ExternalAPIDataContextProvider>
+              </SubgraphDataContextProvider>
+            </Web3DataContextProvider>
+          </PendingTransactionsContextProvider>
+        </Web3ReactProvider>
+      </Web3ContextProvider>
+    </ChainContextProvider>
   );
 }
 

@@ -2,7 +2,7 @@ import React, { useCallback, useMemo } from "react";
 import styled from "styled-components";
 import { BigNumber } from "ethers";
 import { parseUnits } from "ethers/lib/utils";
-import { useWeb3React } from "@web3-react/core";
+import { useWeb3Wallet } from "../../../../hooks/useWeb3Wallet";
 
 import {
   getAssetDecimals,
@@ -87,7 +87,7 @@ const VaultV1TransferForm: React.FC<VaultV1TransferFormProps> = ({
 
   const { handleInputChange, handleMaxClick, vaultActionForm, transferData } =
     useVaultActionForm(vaultOption);
-  const { active } = useWeb3React();
+  const { active } = useWeb3Wallet();
   const [, setShowConnectModal] = useConnectWalletModal();
 
   const isInputNonZero = parseFloat(vaultActionForm.inputAmount) > 0;
@@ -212,7 +212,7 @@ const VaultV1TransferForm: React.FC<VaultV1TransferFormProps> = ({
 
       {/* Amount Input */}
       <BaseInputLabel className="mt-4">AMOUNT ({assetDisplay})</BaseInputLabel>
-      <BaseInputContainer className="position-relative" error={Boolean(error)}>
+      <BaseInputContainer error={Boolean(error)}>
         <BaseInput
           type="number"
           className="form-control"

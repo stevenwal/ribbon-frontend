@@ -1,26 +1,20 @@
-import React, { ReactNode, useMemo } from "react";
+import React, { ReactNode, useEffect, useMemo } from "react";
 import { ethers } from "ethers";
-import { useWeb3React } from "@web3-react/core";
+import { useWeb3Wallet } from "webapp/lib/hooks/useWeb3Wallet";
 import styled, { keyframes } from "styled-components";
 import { Redirect } from "react-router-dom";
 
-import {
-  BaseIndicator,
-  BaseLink,
-  PrimaryText,
-  Title,
-} from "shared/lib/designSystem";
+import { BaseLink, Title } from "shared/lib/designSystem";
 import colors from "shared/lib/designSystem/colors";
-import VaultInformation from "../../components/Deposit/VaultInformation";
 import PerformanceSection from "./PerformanceSection";
-import { useVaultData, useV2VaultData } from "../../hooks/web3DataContext";
+import { useVaultData, useV2VaultData } from "shared/lib/hooks/web3DataContext";
 import {
   formatSignificantDecimals,
   isPracticallyZero,
 } from "shared/lib/utils/math";
 import sizes from "shared/lib/designSystem/sizes";
 import VaultActivity from "../../components/Vault/VaultActivity";
-import usePullUp from "../../hooks/usePullUp";
+import usePullUp from "webapp/lib/hooks/usePullUp";
 import {
   getDisplayAssets,
   getEtherscanURI,
@@ -30,19 +24,25 @@ import {
   VaultOptions,
   VaultVersion,
   VaultVersionList,
-} from "../../constants/constants";
-import { productCopies } from "../../components/Product/productCopies";
+} from "shared/lib/constants/constants";
+import { productCopies } from "shared/lib/components/Product/productCopies";
 import useVaultOption from "../../hooks/useVaultOption";
-import { getVaultColor } from "../../utils/vault";
-import { getAssetLogo, getAssetDecimals } from "../../utils/asset";
+import { getVaultColor } from "shared/lib/utils/vault";
+import { getAssetDecimals, getAssetLogo } from "shared/lib/utils/asset";
 import { Container } from "react-bootstrap";
 import theme from "shared/lib/designSystem/theme";
-import { getVaultURI } from "../../constants/constants";
+import { getVaultURI } from "webapp/lib/constants/constants";
 import DesktopActionForm from "../../components/Vault/VaultActionsForm/DesktopActionForm";
 import YourPosition from "../../components/Vault/YourPosition";
 import { truncateAddress } from "shared/lib/utils/address";
 import { ExternalIcon } from "shared/lib/assets/icons/icons";
-import useVaultActivity from "../../hooks/useVaultActivity";
+import useRedirectOnSwitchChain from "webapp/lib/hooks/useRedirectOnSwitchChain";
+import useRedirectOnWrongChain from "webapp/lib/hooks/useRedirectOnWrongChain";
+import Banner from "shared/lib/components/Banner/Banner";
+import VaultInformation from "../../components/Deposit/VaultInformation";
+import useGlobalAccess from "../../hooks/useGlobalAccess";
+import { TreasuryVaultOptions } from "../../constants/constants";
+import useVaultActivity from "shared/lib/hooks/useVaultActivity";
 
 const { formatUnits } = ethers.utils;
 
@@ -52,19 +52,14 @@ const DepositPageContainer = styled(Container)`
   }
 `;
 
-const BannerContainer = styled.div<{ color: string }>`
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  width: 100%;
-  background: ${(props) => `${props.color}29`};
-  padding: 12px 0px;
-`;
-
-const BannerButton = styled.div<{ color: string }>`
-  padding: 10px 16px;
-  border: ${theme.border.width} ${theme.border.style} ${(props) => props.color};
-  border-radius: 100px;
+const HeroDescriptionContainer = styled(Container)`
+  @media (min-width: ${sizes.xl}px) {
+    max-width: 1140px;
+  }
+  top: 50%;
+  left: 50%;
+  position: absolute;
+  transform: translate(-50%, -50%);
 `;
 
 const HeroContainer = styled.div<{ color: string }>`
@@ -73,6 +68,7 @@ const HeroContainer = styled.div<{ color: string }>`
     ${(props) => props.color}29 1.04%,
     ${(props) => props.color}07 98.99%
   );
+  height: 400px;
   padding: 40px 0;
   overflow: hidden;
 `;
@@ -188,10 +184,15 @@ const ContractButtonTitle = styled(Title)`
 `;
 
 const DepositPage = () => {
-  
-  usePullUp();
-  const { chainId } = useWeb3React();
+  const auth = localStorage.getItem("auth");
+
   const { vaultOption, vaultVersion } = useVaultOption();
+  const { chainId } = useWeb3Wallet();
+  useRedirectOnSwitchChain(chainId);
+  useRedirectOnWrongChain(vaultOption, chainId);
+
+  usePullUp();
+
   const { status, deposits, vaultLimit } = useVaultData(
     vaultOption || VaultList[0]
   );
@@ -200,24 +201,46 @@ const DepositPage = () => {
     loading,
   } = useV2VaultData(vaultOption || VaultList[0]);
   const isLoading = status === "loading" || loading;
-  const premiumDecimals = getAssetDecimals("USDC");
   const activities = useVaultActivity(vaultOption!, vaultVersion);
-
-  const totalYields = activities.activities.map((activity) => {
-    return (activity.type == "sales")
-      ? Number(activity.premium)
-      :0
-  }).reduce((totalYield, roundlyYield) => totalYield + roundlyYield, 0) 
-  / (10 ** premiumDecimals)  
+  const premiumDecimals = getAssetDecimals("USDC");
 
   const [totalDepositStr, depositLimitStr] = useMemo(() => {
-    return [
-      parseFloat(
-        formatSignificantDecimals(formatUnits(totalBalance, decimals), 2)
-      ),
-      parseFloat(formatSignificantDecimals(formatUnits(cap, decimals))),
-    ];
+    switch (vaultVersion) {
+      case "v1":
+        return [
+          parseFloat(
+            formatSignificantDecimals(formatUnits(deposits, decimals), 2)
+          ),
+          parseFloat(
+            formatSignificantDecimals(formatUnits(vaultLimit, decimals))
+          ),
+        ];
+      case "v2":
+        return [
+          parseFloat(
+            formatSignificantDecimals(formatUnits(totalBalance, decimals), 2)
+          ),
+          parseFloat(formatSignificantDecimals(formatUnits(cap, decimals))),
+        ];
+    }
   }, [cap, decimals, deposits, totalBalance, vaultLimit, vaultVersion]);
+
+  // Total lifetime yield
+  const totalYields = useMemo(() => {
+    if (activities.activities) {
+      const yields = activities.activities
+        .map((activity) => {
+          return activity.type === "sales" ? Number(activity.premium) : 0;
+        })
+        .reduce((totalYield, roundlyYield) => totalYield + roundlyYield, 0);
+
+      return parseFloat(
+        formatSignificantDecimals(formatUnits(yields, premiumDecimals), 2)
+      );
+    } else {
+      return 0;
+    }
+  }, [activities, premiumDecimals]);
 
   const vaultInformation = (
     <VaultInformation
@@ -240,12 +263,16 @@ const DepositPage = () => {
     return <Redirect to="/" />;
   }
 
+  if (!auth || !auth.includes(vaultOption)) {
+    return <Redirect to="/" />;
+  }
+
   /**
    * Redirect to v1 if vault version given is invalid
    */
-  if (!hasVaultVersion(vaultOption, vaultVersion)) {
+  if (chainId && !hasVaultVersion(vaultOption, vaultVersion, chainId)) {
     const availableVaultVersions = VaultVersionList.filter((version) =>
-      hasVaultVersion(vaultOption, version)
+      hasVaultVersion(vaultOption, version, chainId)
     );
 
     if (availableVaultVersions.length <= 0) {
@@ -277,9 +304,9 @@ const DepositPage = () => {
         <div className="row">
           {VaultAddressMap[vaultOption][vaultVersion] && chainId && (
             <BaseLink
-              to={`${getEtherscanURI(chainId)}/address/${VaultAddressMap[vaultOption][
-                vaultVersion
-              ]!}`}
+              to={`${getEtherscanURI(chainId)}/address/${VaultAddressMap[
+                vaultOption
+              ][vaultVersion]!}`}
               target="_blank"
               rel="noreferrer noopener"
               className="w-100"
@@ -328,6 +355,7 @@ const HeroSection: React.FC<{
   variant: VaultVersion;
   v1Inactive?: boolean;
 }> = ({ vaultInformation, vaultOption, variant, v1Inactive }) => {
+  const { chainId } = useWeb3Wallet();
   const color = getVaultColor(vaultOption);
 
   const logo = useMemo(() => {
@@ -337,7 +365,28 @@ const HeroSection: React.FC<{
     switch (asset) {
       case "WETH":
         return <Logo width="55%" style={{ marginTop: 40 }} />;
+      case "WBTC":
+        return <Logo height="190%" style={{ marginTop: 40 }} />;
       case "USDC":
+      case "yvUSDC":
+        return (
+          <Logo
+            height="180%"
+            style={{
+              marginTop: 40,
+            }}
+            markerConfig={{
+              right: "0px",
+              border: "none",
+            }}
+          />
+        );
+      case "AAVE":
+        return <Logo showBackground />;
+      case "WAVAX":
+        return <Logo showBackground />;
+      case "SOL":
+        return <Logo showBackground height="100%" width="100%" />;
       default:
         return <Logo />;
     }
@@ -360,30 +409,23 @@ const HeroSection: React.FC<{
   return (
     <>
       {/* V1 top banner */}
-      {variant === "v1" && hasVaultVersion(vaultOption, "v2") && (
-        <BannerContainer color={color}>
-          <BaseIndicator size={8} color={color} className="mr-2" />
-          <PrimaryText
-            fontSize={14}
-            lineHeight={20}
+      {variant === "v1" &&
+        chainId &&
+        hasVaultVersion(vaultOption, "v2", chainId) && (
+          <Banner
             color={color}
-            className="mr-3"
-          >
-            {v1Inactive
-              ? "V1 vaults are now inactive and do not accept deposits"
-              : "V2 vaults are now live"}
-          </PrimaryText>
-          <BaseLink to={getVaultURI(vaultOption, "v2")}>
-            <BannerButton color={color} role="button">
-              <PrimaryText fontSize={14} lineHeight={20} color={color}>
-                Switch to V2
-              </PrimaryText>
-            </BannerButton>
-          </BaseLink>
-        </BannerContainer>
-      )}
+            message={
+              v1Inactive
+                ? "V1 vaults are now inactive and do not accept deposits"
+                : "V2 vaults are now live"
+            }
+            linkURI={getVaultURI(vaultOption, "v2")}
+            linkText="Switch to V2"
+          ></Banner>
+        )}
+
       <HeroContainer className="position-relative" color={color}>
-        <DepositPageContainer className="container">
+        <HeroDescriptionContainer className="container">
           <div className="row mx-lg-n1 position-relative">
             <div style={{ zIndex: 1 }} className="col-xl-6 d-flex flex-column">
               <div className="d-flex flex-row my-3">
@@ -398,7 +440,8 @@ const HeroSection: React.FC<{
                 ))}
                 <AttributePill className="mr-2 text-uppercase" color={color}>
                   {[...VaultVersionList].map((version) =>
-                    hasVaultVersion(vaultOption, version) ? (
+                    chainId &&
+                    hasVaultVersion(vaultOption, version, chainId) ? (
                       <BaseLink
                         to={getVaultURI(vaultOption, version)}
                         key={version}
@@ -424,7 +467,7 @@ const HeroSection: React.FC<{
               {logo}
             </SplashImage>
           </div>
-        </DepositPageContainer>
+        </HeroDescriptionContainer>
 
         {liveryHeroSection}
       </HeroContainer>

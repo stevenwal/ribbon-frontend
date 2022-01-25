@@ -7,16 +7,21 @@ import React, {
 } from "react";
 import styled from "styled-components";
 
-import useVaultActivity from "../../hooks/useVaultActivity";
-import { ActivityFilter, activityFilters, SortBy, sortByList } from "webapp/lib/components/Vault/types";
-import VaultActivityHeader from "./VaultActivityHeader";
+import useVaultActivity from "shared/lib/hooks/useVaultActivity";
+import {
+  ActivityFilter,
+  activityFilters,
+  SortBy,
+  sortByList,
+} from "webapp/lib/components/Vault/types";
+import VaultActivityHeader from "webapp/lib/components/Vault/VaultActivityHeader";
 import DesktopVaultActivityList from "./DesktopVaultActivityList";
 import useScreenSize from "shared/lib/hooks/useScreenSize";
 import sizes from "shared/lib/designSystem/sizes";
 import MobileVaultActivityList from "./MobileVaultActivityList";
 import { Title } from "shared/lib/designSystem";
 import useTextAnimation from "shared/lib/hooks/useTextAnimation";
-import { VaultOptions, VaultVersion } from "../../constants/constants";
+import { VaultOptions, VaultVersion } from "shared/lib/constants/constants";
 import Pagination from "shared/lib/components/Common/Pagination";
 import { AnimatePresence, motion } from "framer-motion";
 import { useLocation } from "react-router-dom";
@@ -45,7 +50,6 @@ const VaultActivity: React.FC<VaultActivityProps> = ({
   const [activityFilter, setActivityFilter] = useState<ActivityFilter>(
     activityFilters[0]
   );
-
   const [sortBy, setSortBy] = useState<SortBy>(sortByList[0]);
   const { width } = useScreenSize();
   const [page, setPage] = useState(1);

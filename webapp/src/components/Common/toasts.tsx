@@ -113,7 +113,7 @@ export const TxStatusToast = () => {
       switch (_currentTx.type) {
         case "approval":
           return `Your ${getAssetDisplay(
-            getAssets(_currentTx.vault)
+            _currentTx.asset
           )} is ready to deposit`;
         case "stakingApproval":
           return `Your ${_currentTx.stakeAsset} is ready to stake`;
@@ -122,7 +122,7 @@ export const TxStatusToast = () => {
             getAssets(_currentTx.vault)
           )} withdrawal from ${
             productCopies[_currentTx.vault].title
-          }. You can complete your withdrawal any time after 10am UTC on Friday.`;
+          }. You can complete your withdrawal any time after 12pm UTC on Friday.`;
         case "withdraw":
           return `${amountFormatted} ${getAssetDisplay(
             getAssets(_currentTx.vault)
@@ -168,7 +168,7 @@ export const TxStatusToast = () => {
             switch (currentTx.type) {
               case "approval":
                 return `Please try approving ${getAssetDisplay(
-                  getAssets(currentTx.vault)
+                  currentTx.asset
                 )} again`;
               case "stakingApproval":
                 return `Please try approving ${currentTx.stakeAsset} again`;

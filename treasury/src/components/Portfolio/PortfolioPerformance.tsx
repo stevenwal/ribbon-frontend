@@ -1,4 +1,4 @@
-import { useWeb3React } from "@web3-react/core";
+import { useWeb3Wallet } from "webapp/lib/hooks/useWeb3Wallet";
 import React, { useCallback, useMemo, useState } from "react";
 import styled from "styled-components";
 import {
@@ -16,20 +16,25 @@ import theme from "shared/lib/designSystem/theme";
 import {
   useAssetsPrice,
   useAssetsPriceHistory,
-} from "../../hooks/useAssetPrice";
-import useBalances from "../../hooks/useBalances";
+} from "shared/lib/hooks/useAssetPrice";
+import useBalances from "shared/lib/hooks/useBalances";
 import useTextAnimation from "shared/lib/hooks/useTextAnimation";
-import { assetToFiat, formatBigNumber } from "shared/lib/utils/math";
-import PerformanceChart from "webapp/lib/components/PerformanceChart/PerformanceChart";
-import { HoverInfo } from "webapp/lib/components/PerformanceChart/types";
+import {
+  assetToFiat,
+  formatBigNumber,
+  formatSignificantDecimals,
+} from "shared/lib/utils/math";
+import PerformanceChart, {
+  HoverInfo,
+} from "shared/lib/components/Common/PerformanceChart";
 import sizes from "shared/lib/designSystem/sizes";
-import useConnectWalletModal from "../../hooks/useConnectWalletModal";
-import { getAssets } from "../../constants/constants";
-import { getAssetDecimals } from "../../utils/asset";
+import useConnectWalletModal from "shared/lib/hooks/useConnectWalletModal";
+import { getAssets } from "shared/lib/constants/constants";
+import { getAssetDecimals } from "shared/lib/utils/asset";
 import { useRBNTokenAccount } from "shared/lib/hooks/useRBNTokenSubgraph";
-import useVaultAccounts from "../../hooks/useVaultAccounts"
-import { Assets } from "../../store/types";
-import useTransactions from "../../hooks/useTransactions";
+import { Assets } from "shared/lib/store/types";
+import useTransactions from "shared/lib/hooks/useTransactions";
+import { formatUnits } from "ethers/lib/utils";
 
 const PerformanceContainer = styled.div`
   display: flex;
@@ -154,12 +159,12 @@ const dateFilterOptions = ["1w", "1m", "all"] as const;
 type dateFilterType = typeof dateFilterOptions[number];
 
 const PortfolioPerformance = () => {
-  const { active } = useWeb3React();
+  const { active } = useWeb3Wallet();
   const { prices: assetsPrice, loading: assetsPriceLoading } = useAssetsPrice();
   const { searchAssetPriceFromTimestamp } = useAssetsPriceHistory();
   const [hoveredBalanceUpdateIndex, setHoveredBalanceUpdateIndex] =
     useState<number>();
-  const [rangeFilter, setRangeFilter] = useState<dateFilterType>("1m");
+  const [rangeFilter, setRangeFilter] = useState<dateFilterType>("all");
   const [, setShowConnectWalletModal] = useConnectWalletModal();
   const { data: RBNTokenAccount, loading: RBNTokenAccountLoading } =
     useRBNTokenAccount();
@@ -178,15 +183,29 @@ const PortfolioPerformance = () => {
   const { balances: subgraphBalanceUpdates, loading: balanceUpdatesLoading } =
     useBalances(undefined, afterDate ? afterDate.unix() : undefined);
   const loading =
-    assetsPriceLoading || balanceUpdatesLoading || transactionsLoading;
+    assetsPriceLoading ||
+    balanceUpdatesLoading ||
+    transactionsLoading ||
+    RBNTokenAccountLoading;
   const animatedLoadingText = useTextAnimation(loading);
 
-  const premiumDecimals = getAssetDecimals("USDC")
+  const premiumDecimals = getAssetDecimals("USDC");
+
   const totalYield = useMemo(() => {
-    return transactions.filter(transaction => transaction.type === "distribute")
-      .reduce((total, transaction) =>
-        total.add(transaction.amount), BigNumber.from(0))
-  }, [transactions])
+    const yields = active
+      ? transactions
+          .filter((transaction) => transaction.type === "distribute")
+          .reduce(
+            (total, transaction) => total.add(transaction.amount),
+            BigNumber.from(0)
+          )
+      : BigNumber.from(0);
+
+    return parseFloat(
+      formatSignificantDecimals(formatUnits(yields, premiumDecimals), 2)
+    ).toFixed(2);
+  }, [transactions, active, premiumDecimals]);
+
   /**
    * We first process and add several additional metrices that is useful for further calculation
    * - Net deposit
@@ -255,7 +274,6 @@ const PortfolioPerformance = () => {
 
     return [balances, vaultsBalance];
   }, [subgraphBalanceUpdates]);
-
   /**
    * We process balances into fiat term before perform more processing
    * balances[].balance - Total balance of user portfolio up until that point
@@ -496,7 +514,7 @@ const PortfolioPerformance = () => {
     }
 
     return RBNTokenAccount
-      ? formatBigNumber(RBNTokenAccount.balance, 18)
+      ? formatBigNumber(RBNTokenAccount.totalBalance, 18)
       : "0.00";
   }, [RBNTokenAccount, active, animatedLoadingText, loading]);
 
@@ -504,7 +522,7 @@ const PortfolioPerformance = () => {
     () => (
       <DepositChartExtra>
         <SecondaryText fontSize={12} className="w-100">
-          Vault Balance
+          Deposit Balance
         </SecondaryText>
         <div className="d-flex align-items-center flex-wrap">
           <KPI>
@@ -594,12 +612,31 @@ const PortfolioPerformance = () => {
                   : "red"
               }
             >
-              ${parseFloat(formatBigNumber(totalYield, premiumDecimals)).toFixed(2)}
+              ${totalYield}
             </KPIText>
-            <DepositCurrency>{active && !loading ? "USDC" : ""}</DepositCurrency>
+            <DepositCurrency>
+              {active && !loading ? "USDC" : ""}
+            </DepositCurrency>
           </KPI>
         </KPIColumn>
         <KPIColumn>
+          {/* <SecondaryText fontSize={12} className="w-100">
+            ROI
+          </SecondaryText>
+          <KPIText
+            active={active}
+            state={
+              calculatedKPI.roi === 0
+                ? undefined
+                : calculatedKPI.roi > 0
+                ? "green"
+                : "red"
+            }
+          >
+            {renderRoiText()}
+          </KPIText>
+        </KPIColumn>
+        <KPIColumn> */}
           <SecondaryText fontSize={12} color={colors.red} className="w-100">
             $RBN Balance
           </SecondaryText>

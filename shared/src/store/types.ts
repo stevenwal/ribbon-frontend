@@ -4,12 +4,20 @@ import { VaultOptions } from "../constants/constants";
 
 export const AssetsList = [
   "AAVE",
+  "AURORA",
+  "WNEAR",
   "WAVAX",
   "WETH",
   "USDC",
   "WBTC",
   "stETH",
+  "wstETH",
   "yvUSDC",
+  "PERP",
+  "RBN",
+  "veRBN",
+  "LDO",
+  "SOL",
 ] as const;
 export type Assets = typeof AssetsList[number];
 
@@ -18,12 +26,12 @@ export type PendingTransaction = {
   status?: "success" | "error";
 } & (
   | {
-      type: "withdraw" | "withdrawInitiation" | "approval" | "migrate";
+      type: "withdraw" | "withdrawInitiation" | "migrate";
       amount: string;
       vault: VaultOptions;
     }
   | {
-      type: "deposit";
+      type: "deposit" | "approval";
       amount: string;
       vault: VaultOptions;
       asset: Assets;

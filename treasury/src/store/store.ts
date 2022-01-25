@@ -1,26 +1,18 @@
 import { createGlobalState } from "react-hooks-global-state";
-import { Assets } from "./types";
-import { DesktopViewType } from "shared/lib/components/Product/types";
-import { VaultOptions, VaultVersion } from "../constants/constants";
+import {
+  VaultName,
+  VaultOptions,
+  VaultVersion,
+} from "shared/lib/constants/constants";
+import { Assets } from "shared/lib/store/types";
 import {
   ACTIONS,
   ActionType,
   V2WithdrawOption,
-} from "../components/Vault/VaultActionsForm/Modal/types";
+} from "webapp/lib/components/Vault/VaultActionsForm/Modal/types";
+import { TreasuryVaultOptions } from "../constants/constants";
 
-import {
-  DefiScoreProtocol,
-  DefiScoreToken,
-  DefiScoreTokenList,
-} from "shared/lib/models/defiScore";
-
-import {
-  PendingTransaction,
-  AssetYieldsInfoData,
-  AirdropInfoData,
-} from "./types";
-
-interface WebappGlobalStore {
+interface GlobalStore {
   vaultActionForm: {
     vaultOption?: VaultOptions;
     vaultVersion: VaultVersion;
@@ -28,26 +20,9 @@ interface WebappGlobalStore {
     actionType: ActionType;
     depositAsset?: Assets;
     withdrawOption?: V2WithdrawOption;
+    migrateSourceVault?: VaultOptions;
     receiveVault?: VaultOptions;
   };
-}
-
-interface GlobalStore {
-  pendingTransactions: PendingTransaction[];
-  showConnectWallet: boolean;
-  assetYieldsInfo: {
-    fetched: boolean;
-    data: AssetYieldsInfoData;
-  };
-  gasPrice: string;
-  desktopView: DesktopViewType;
-  airdropInfo: AirdropInfoData | undefined;
-  vaultPositionModal: {
-    show: boolean;
-    vaultOption?: VaultOptions;
-    vaultVersion: VaultVersion;
-  };
-  notificationLastReadTimestamp?: number;
 }
 
 export const initialVaultActionForm = {
@@ -58,33 +33,19 @@ export const initialVaultActionForm = {
 };
 
 export const initialState: GlobalStore = {
-  pendingTransactions: [],
-  showConnectWallet: false,
-  assetYieldsInfo: {
-    fetched: false,
-    data: Object.fromEntries(
-      DefiScoreTokenList.map((token) => [token, new Array(0)])
-    ) as {
-      [token in DefiScoreToken]: Array<{
-        protocol: DefiScoreProtocol;
-        apr: number;
-      }>;
-    },
-  },
-  gasPrice: "",
-  desktopView: "grid",
-  airdropInfo: undefined,
-  vaultPositionModal: {
-    show: false,
-    vaultVersion: "v1" as VaultVersion,
-  },
-  notificationLastReadTimestamp: undefined,
-};
-
-export const webappInitialState: WebappGlobalStore = {
   vaultActionForm: initialVaultActionForm,
 };
 
-export const { useGlobalState } = createGlobalState(initialState);
 export const { useGlobalState: useWebappGlobalState } =
-  createGlobalState(webappInitialState);
+  createGlobalState(initialState);
+
+interface GlobalAccessStore {
+  access: TreasuryVaultOptions[];
+}
+
+export const initialAccessState: GlobalAccessStore = {
+  access: [],
+};
+
+export const { useGlobalState: useGlobalAccessState } =
+  createGlobalState(initialAccessState);

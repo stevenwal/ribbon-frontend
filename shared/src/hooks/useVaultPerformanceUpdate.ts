@@ -14,11 +14,14 @@ import { SubgraphDataContext } from "./subgraphDataContext";
 const getVaultPriceHistoryKey = (vault: VaultOptions) =>
   `vaultPriceHistory_${vault.replace(/-/g, "")}`;
 
-export const vaultPriceHistoryGraphql = (version: VaultVersion) => {
+export const vaultPriceHistoryGraphql = (
+  version: VaultVersion,
+  chainId: number
+) => {
   return VaultList.reduce((acc, vault) => {
     const vaultAddress = VaultAddressMap[vault][version]?.toLowerCase();
 
-    if (!vaultAddress) {
+    if (!vaultAddress || VaultAddressMap[vault].chainId !== chainId) {
       return acc;
     }
 
@@ -39,9 +42,9 @@ export const vaultPriceHistoryGraphql = (version: VaultVersion) => {
   }, "");
 };
 
-export const resolveVaultPriceHistorySubgraphResponse = (
-  responses: { [vault in VaultVersion]: any | undefined },
-): VaultPriceHistoriesData =>
+export const resolveVaultPriceHistorySubgraphResponse = (responses: {
+  [version in VaultVersion]: any | undefined;
+}): VaultPriceHistoriesData =>
   Object.fromEntries(
     VaultVersionList.map((version) => [
       version,
@@ -78,16 +81,19 @@ const useVaultPriceHistory = (
   const contextData = useContext(SubgraphDataContext);
 
   return {
-    priceHistory: contextData.vaultPriceHistory[vaultVersion][vaultOption],
-    loading: contextData.loading,
+    priceHistory:
+      contextData.vaultSubgraphData.vaultPriceHistory[vaultVersion][
+        vaultOption
+      ],
+    loading: contextData.vaultSubgraphData.loading,
   };
 };
 
 export const useVaultsPriceHistory = () => {
   const contextData = useContext(SubgraphDataContext);
   return {
-    data: contextData.vaultPriceHistory,
-    loading: contextData.loading,
+    data: contextData.vaultSubgraphData.vaultPriceHistory,
+    loading: contextData.vaultSubgraphData.loading,
   };
 };
 

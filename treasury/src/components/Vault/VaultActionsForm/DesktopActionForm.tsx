@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useWeb3React } from "@web3-react/core";
+import { useWeb3Wallet } from "webapp/lib/hooks/useWeb3Wallet";
 import styled from "styled-components";
 
 import ActionModal from "./Modal/ActionModal";
@@ -8,11 +8,12 @@ import {
   VaultAddressMap,
   VaultOptions,
   VaultVersion,
-} from "../../../constants/constants";
+} from "shared/lib/constants/constants";
 import { useCallback } from "react";
+import VaultV1ActionsForm from "webapp/lib/components/Vault/VaultActionsForm/VaultV1ActionsForm";
 import VaultV2ActionsForm from "./VaultV2ActionForm";
 import { BaseLink, Title } from "shared/lib/designSystem";
-import { getVaultColor } from "../../../utils/vault";
+import { getVaultColor } from "shared/lib/utils/vault";
 import { truncateAddress } from "shared/lib/utils/address";
 import { ExternalIcon } from "shared/lib/assets/icons/icons";
 
@@ -37,16 +38,27 @@ interface DesktopActionFormProps {
 }
 
 const DesktopActionForm: React.FC<DesktopActionFormProps> = ({ vault }) => {
-  const { chainId } = useWeb3React();
+  const { chainId } = useWeb3Wallet();
   const [showActionModal, setShowActionModal] = useState(false);
 
   const renderForm = useCallback(() => {
-    return (
-      <VaultV2ActionsForm
-        vaultOption={vault.vaultOption}
-        onFormSubmit={() => setShowActionModal(true)}
-      />
-    );
+    switch (vault.vaultVersion) {
+      case "v1":
+        return (
+          <VaultV1ActionsForm
+            variant="desktop"
+            vaultOption={vault.vaultOption}
+            onFormSubmit={() => setShowActionModal(true)}
+          />
+        );
+      case "v2":
+        return (
+          <VaultV2ActionsForm
+            vaultOption={vault.vaultOption}
+            onFormSubmit={() => setShowActionModal(true)}
+          />
+        );
+    }
   }, [vault]);
 
   return (

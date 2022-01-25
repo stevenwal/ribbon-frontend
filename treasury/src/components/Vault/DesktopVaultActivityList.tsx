@@ -1,27 +1,28 @@
 import React, { useCallback, useMemo } from "react";
-import { useWeb3React } from "@web3-react/core";
+import { useWeb3Wallet } from "webapp/lib/hooks/useWeb3Wallet";
 import styled from "styled-components";
 import moment from "moment";
 
 import {
   getAssets,
   getEtherscanURI,
+  isPutVault,
   getOptionAssets,
   VaultOptions,
-} from "../../constants/constants";
+} from "shared/lib/constants/constants";
 import { SecondaryText, Title } from "shared/lib/designSystem";
 import colors from "shared/lib/designSystem/colors";
-import { VaultActivity, VaultActivityType } from "../../models/vault";
+import { VaultActivity, VaultActivityType } from "shared/lib/models/vault";
 import {
   assetToUSD,
   formatBigNumber,
   formatOption,
 } from "shared/lib/utils/math";
-import { useAssetsPriceHistory } from "../..//hooks/useAssetPrice";
+import { useAssetsPriceHistory } from "shared/lib/hooks/useAssetPrice";
 import sizes from "shared/lib/designSystem/sizes";
 import useScreenSize from "shared/lib/hooks/useScreenSize";
 import useTextAnimation from "shared/lib/hooks/useTextAnimation";
-import { getAssetDecimals, getAssetDisplay } from "../../utils/asset";
+import { getAssetDecimals, getAssetDisplay } from "shared/lib/utils/asset";
 import TableWithFixedHeader from "shared/lib/components/Common/TableWithFixedHeader";
 
 const VaultActivityIcon = styled.div<{ type: VaultActivityType }>`
@@ -90,20 +91,22 @@ const DesktopVaultActivityList: React.FC<DesktopVaultActivityListProps> = ({
   const { searchAssetPriceFromTimestamp, loading: assetPriceLoading } =
     useAssetsPriceHistory();
 
-  const premiumDecimals = getAssetDecimals("USDC")
-
   const { width: screenWidth } = useScreenSize();
   const loadingText = useTextAnimation(assetPriceLoading);
-  const { chainId } = useWeb3React();
+  const { chainId } = useWeb3Wallet();
+  const premiumDecimals = getAssetDecimals("USDC");
 
-  const getVaultActivityExternalURL = useCallback((activity: VaultActivity) => {
-    switch (activity.type) {
-      case "minting":
-        return `${getEtherscanURI(chainId || 1)}/tx/${activity.openTxhash}`;
-      case "sales":
-        return `${getEtherscanURI(chainId || 1)}/tx/${activity.txhash}`;
-    }
-  }, [chainId]);
+  const getVaultActivityExternalURL = useCallback(
+    (activity: VaultActivity) => {
+      switch (activity.type) {
+        case "minting":
+          return `${getEtherscanURI(chainId || 1)}/tx/${activity.openTxhash}`;
+        case "sales":
+          return `${getEtherscanURI(chainId || 1)}/tx/${activity.txhash}`;
+      }
+    },
+    [chainId]
+  );
 
   const getVaultActivityTableData = useCallback(
     (activity: VaultActivity) => {
@@ -111,7 +114,7 @@ const DesktopVaultActivityList: React.FC<DesktopVaultActivityListProps> = ({
         "USDC",
         activity.date.valueOf()
       );
-      
+
       switch (activity.type) {
         case "minting":
           return [
@@ -125,8 +128,7 @@ const DesktopVaultActivityList: React.FC<DesktopVaultActivityListProps> = ({
             </>,
             <>
               <VaultPrimaryText>
-                O-{asset} {moment(activity.expiry, "X").format("M/DD")}{" "}
-                {"CALL"}
+                O-{asset} {moment(activity.expiry, "X").format("M/DD")} {"CALL"}
               </VaultPrimaryText>
               <VaultSecondaryText>
                 Strike {formatOption(activity.strikePrice)}
@@ -156,7 +158,9 @@ const DesktopVaultActivityList: React.FC<DesktopVaultActivityListProps> = ({
                 {moment(activity.vaultShortPosition.expiry, "X").format(
                   "M/DD"
                 )}{" "}
-                {"CALL"}
+                {isPutVault(vaultOption)
+                  ? `${getOptionAssets(vaultOption)} PUT`
+                  : "CALL"}
               </VaultPrimaryText>
               <VaultSecondaryText>
                 Strike {formatOption(activity.vaultShortPosition.strikePrice)}
@@ -191,8 +195,8 @@ const DesktopVaultActivityList: React.FC<DesktopVaultActivityListProps> = ({
       loadingText,
       asset,
       decimals,
+      premiumDecimals,
       searchAssetPriceFromTimestamp,
-      vaultOption,
     ]
   );
 

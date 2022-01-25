@@ -2,8 +2,26 @@
   "name": "webapp",
   "version": "0.1.0",
   "private": true,
+  "license": "MIT",
+  "main": "lib/src/index.js",
+  "directories": {
+    "lib": "lib"
+  },
+  "files": [
+    "lib"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ribbon-finance/ribbon-frontend.git"
+  },  
   "dependencies": {
+    "@project-serum/anchor": "^0.20.0",
+    "@solana/wallet-adapter-base": "^0.7.1",
+    "@solana/wallet-adapter-react": "^0.13.1",
+    "@solana/wallet-adapter-wallets": "^0.11.3",
+    "@solana/web3.js": "^1.31.0",
     "@craco/craco": "^6.1.1",
+    "@davatar/react": "^1.8.1",
     "@testing-library/jest-dom": "^5.11.4",
     "@testing-library/react": "^11.1.0",
     "@testing-library/user-event": "^12.1.10",
@@ -46,7 +64,10 @@
     "libgen": "tsc -w",
     "libbuild": "tsc --build \"./tsconfig.json\"",
     "eject": "react-scripts eject",
-    "lint": "eslint --fix --ext .tsx,.ts ."
+    "lint": "eslint --fix --ext .tsx,.ts .",
+    "lib": "tsc -w",
+    "compile": "tsc --build \"./tsconfig.json\"",
+    "deploy:staging": "cur=$(git rev-parse --abbrev-ref HEAD) && git checkout staging && git reset --hard $cur && git push -f origin staging && git checkout $cur"
   },
   "eslintConfig": {
     "extends": [

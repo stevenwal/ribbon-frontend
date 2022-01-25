@@ -6,12 +6,10 @@ import {
   VaultNameOptionMap,
   VaultOptions,
   VaultVersion,
-} from "../constants/constants";
+  VaultList,
+} from "shared/lib/constants/constants";
 
 const useVaultOption = () => {
-  const matchv1 = useRouteMatch<{ vaultSymbol: string }>(
-    "/v1/treasury/:vaultSymbol"
-  );
   const matchv2 = useRouteMatch<{ vaultSymbol: string }>(
     "/treasury/:vaultSymbol"
   );
@@ -20,18 +18,13 @@ const useVaultOption = () => {
     VaultVersion
   ] => {
     if (
-      matchv1?.params.vaultSymbol &&
-      matchv1.params.vaultSymbol in VaultNameOptionMap
-    ) {
-      return [
-        VaultNameOptionMap[matchv1?.params.vaultSymbol as VaultName],
-        "v1",
-      ];
-    }
-
-    if (
       matchv2?.params.vaultSymbol &&
-      matchv2.params.vaultSymbol in VaultNameOptionMap
+      matchv2.params.vaultSymbol in VaultNameOptionMap &&
+      VaultList.indexOf(
+        VaultNameOptionMap[
+          matchv2?.params.vaultSymbol as VaultName
+        ] as typeof VaultList[number]
+      ) > -1
     ) {
       return [
         VaultNameOptionMap[matchv2?.params.vaultSymbol as VaultName],
@@ -41,7 +34,7 @@ const useVaultOption = () => {
 
     /** Default value */
     return [undefined, "v1"];
-  }, [matchv1, matchv2]);
+  }, [matchv2]);
 
   return { vaultOption, vaultVersion };
 };

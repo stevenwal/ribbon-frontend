@@ -2,7 +2,7 @@ import React, { useCallback, useMemo } from "react";
 import styled from "styled-components";
 import moment from "moment";
 
-import { VaultActivity, VaultActivityType } from "../../models/vault";
+import { VaultActivity, VaultActivityType } from "shared/lib/models/vault";
 import theme from "shared/lib/designSystem/theme";
 import colors from "shared/lib/designSystem/colors";
 import { SecondaryText, Title } from "shared/lib/designSystem";
@@ -13,9 +13,10 @@ import {
 } from "shared/lib/utils/math";
 import {
   getAssets,
+  isPutVault,
   VaultOptions,
-} from "../../constants/constants";
-import { getAssetDecimals, getAssetDisplay } from "../../utils/asset";
+} from "shared/lib/constants/constants";
+import { getAssetDecimals, getAssetDisplay } from "shared/lib/utils/asset";
 
 const VaultActivityRow = styled.div`
   display: flex;
@@ -77,6 +78,8 @@ const MobileVaultActivityList: React.FC<MobileVaultActivityListProps> = ({
     };
   }, [vaultOption]);
 
+  const premiumDecimals = getAssetDecimals("USDC");
+
   const renderVaultActivity = useCallback(
     (activity: VaultActivity) => {
       switch (activity.type) {
@@ -90,7 +93,7 @@ const MobileVaultActivityList: React.FC<MobileVaultActivityListProps> = ({
                 O-{asset}-
                 {moment(activity.expiry, "X").format("DD-MMM-YY").toUpperCase()}
                 -{formatOption(activity.strikePrice)}
-                {"C"}
+                {isPutVault(vaultOption) ? "P" : "C"}
               </VaultSecondaryInfoText>
               <VaultActivityInfoRow>
                 <div className="d-flex flex-column">
@@ -123,13 +126,13 @@ const MobileVaultActivityList: React.FC<MobileVaultActivityListProps> = ({
                   .format("DD-MMM-YY")
                   .toUpperCase()}
                 -{formatOption(activity.vaultShortPosition.strikePrice)}
-                {"C"}
+                {isPutVault(vaultOption) ? "P" : "C"}
               </VaultSecondaryInfoText>
               <VaultActivityInfoRow>
                 <div className="d-flex flex-column">
                   <VaultActivityYieldText>
-                    +{formatBigNumber(activity.premium, decimals)}{" "}
-                    {getAssetDisplay(asset)}
+                    +{formatBigNumber(activity.premium, premiumDecimals)}{" "}
+                    {getAssetDisplay("USDC")}
                   </VaultActivityYieldText>
                   <VaultSecondaryInfoText>
                     {moment(activity.timestamp, "X").fromNow()}

@@ -1,4 +1,4 @@
-import { FullVaultList } from "../constants/constants";
+import { RetailVaultList, TreasuryVaultList } from "../constants/constants";
 
 export const ERC20TokenList = [
   "weth",
@@ -6,10 +6,15 @@ export const ERC20TokenList = [
   "wbtc",
   "yvusdc",
   "steth",
+  "wsteth",
+  "ldo",
   "aave",
   "rbn",
+  "verbn",
   "wavax",
-  ...FullVaultList,
+  "perp",
+  ...RetailVaultList,
+  ...TreasuryVaultList,
 ] as const;
 export type ERC20Token = typeof ERC20TokenList[number];
 
@@ -31,6 +36,8 @@ export const getERC20TokenDisplay = (asset: ERC20Token): string => {
       return "yvUSDC";
     case "steth":
       return "stETH";
+    case "verbn":
+      return "veRBN";
     default:
       return asset.toUpperCase();
   }

@@ -7,22 +7,22 @@ import {
   getDisplayAssets,
   VaultOptions,
   VaultVersion,
-} from "../../constants/constants";
-import { getVaultColor } from "../../utils/vault";
+} from "shared/lib/constants/constants";
+import { getVaultColor } from "shared/lib/utils/vault";
 import theme from "shared/lib/designSystem/theme";
 import AssetCircleContainer from "shared/lib/components/Common/AssetCircleContainer";
 import {
   getAssetDecimals,
   getAssetDisplay,
   getAssetLogo,
-} from "../../utils/asset";
+} from "shared/lib/utils/asset";
 import { Title } from "shared/lib/designSystem";
-import colors from "../../designSystem/colors";
+import colors from "shared/lib/designSystem/colors";
 import ButtonArrow from "shared/lib/components/Common/ButtonArrow";
-import useVaultAccounts from "../../hooks/useVaultAccounts";
+import useVaultAccounts from "shared/lib/hooks/useVaultAccounts";
 import { formatBigNumber, isPracticallyZero } from "shared/lib/utils/math";
 import sizes from "shared/lib/designSystem/sizes";
-import { useGlobalState } from "../../store/store";
+import { useGlobalState } from "shared/lib/store/store";
 
 const DesktopContainer = styled.div`
   display: flex;
@@ -93,28 +93,6 @@ const YourPosition: React.FC<YourPositionProps> = ({
   const { vaultAccounts } = useVaultAccounts(vaultVersion);
   const [, setVaultPositionModal] = useGlobalState("vaultPositionModal");
 
-  const roi = useMemo(() => {
-    const vaultAccount = vaultAccounts[vaultOption];
-
-    if (
-      !vaultAccount ||
-      isPracticallyZero(vaultAccount.totalDeposits, decimals)
-    ) {
-      return 0;
-    }
-
-    return (
-      (parseFloat(
-        formatUnits(
-          vaultAccount.totalBalance.sub(vaultAccount.totalDeposits),
-          decimals
-        )
-      ) /
-        parseFloat(formatUnits(vaultAccount.totalDeposits, decimals))) *
-      100
-    );
-  }, [vaultAccounts, vaultOption, decimals]);
-
   const vaultAccount = vaultAccounts[vaultOption];
 
   useEffect(() => {
@@ -159,7 +137,8 @@ const YourPosition: React.FC<YourPositionProps> = ({
                   <PositionInfoText size={14}>
                     {vaultAccount
                       ? formatBigNumber(vaultAccount.totalBalance, decimals)
-                      : "0.00"} {getAssetDisplay(asset)}
+                      : "0.00"}{" "}
+                    {getAssetDisplay(asset)}
                   </PositionInfoText>
                 </div>
               </div>
@@ -177,13 +156,14 @@ const YourPosition: React.FC<YourPositionProps> = ({
             </AssetCircleContainer>
             <div className="d-flex flex-column justify-content-center p-2">
               <PositionInfoText size={10} color={colors.text}>
-                POSITION 
+                POSITION
               </PositionInfoText>
               <div className="d-flex">
                 <PositionInfoText size={14}>
                   {vaultAccount
                     ? formatBigNumber(vaultAccount.totalBalance, decimals)
-                    : "0.00"} {getAssetDisplay(asset)}
+                    : "0.00"}{" "}
+                  {getAssetDisplay(asset)}
                 </PositionInfoText>
               </div>
             </div>

@@ -2,16 +2,31 @@ import React, { useCallback } from "react";
 import styled from "styled-components";
 
 import { ExternalIcon } from "shared/lib/assets/icons/icons";
-import { productCopies } from "../../components/Product/productCopies";
+import { productCopies } from "shared/lib/components/Product/productCopies";
 import {
+  getAssets,
   VaultOptions,
   VaultVersion,
   VaultFees,
-} from "../../constants/constants";
+} from "shared/lib/constants/constants";
 import { PrimaryText, SecondaryText, Title } from "shared/lib/designSystem";
 import colors from "shared/lib/designSystem/colors";
-import StrategySnapshot from "../../components/Deposit/StrategySnapshot";
+import useAssetsYield from "shared/lib/hooks/useAssetsYield";
+import { getAssetDisplay } from "shared/lib/utils/asset";
+import { DefiScoreProtocol } from "shared/lib/models/defiScore";
+import theme from "shared/lib/designSystem/theme";
+import {
+  AAVEIcon,
+  CompoundIcon,
+  DDEXIcon,
+  DYDXIcon,
+  OasisIcon,
+} from "shared/lib/assets/icons/defiApp";
+import StrategySnapshot, {
+  EmptyStrategySnapshot,
+} from "../../components/Deposit/StrategySnapshot";
 import sizes from "shared/lib/designSystem/sizes";
+import { treasuryCopy } from "../../components/Product/treasuryCopies";
 
 const Paragraph = styled.div`
   margin-bottom: 64px;
@@ -51,8 +66,29 @@ const Container = styled.div`
   }
 `;
 
+const MarketYield = styled.div`
+  display: flex;
+  align-items: center;
+  margin-top: 16px;
+  background: ${colors.background.two};
+  border-radius: ${theme.border.radius};
+  padding: 12px 16px;
+
+  &:first-child {
+    margin-top: 0px;
+  }
+`;
+
+const MarketTitle = styled(Title)`
+  margin-left: 8px;
+`;
+
+const MarketYielAPR = styled(Title)`
+  margin-left: auto;
+`;
+
 interface PerformanceSectionProps {
-  vault: {
+  vault?: {
     vaultOption: VaultOptions;
     vaultVersion: VaultVersion;
   };
@@ -63,45 +99,67 @@ const PerformanceSection: React.FC<PerformanceSectionProps> = ({
   vault,
   active,
 }) => {
-  const { vaultOption, vaultVersion } = vault;
-
-  const renderWithdrawalsSection = useCallback(
-    (_vaultOption: VaultOptions, _vaultVersion: VaultVersion) => {
-      switch (_vaultVersion) {
-        case "v1":
-          const withdrawalFee = VaultFees[_vaultOption].v1?.withdrawalFee;
-          return (
-            <>
-              {" "}
-              The vault allocates 90% of the funds deposited towards its
-              strategy and reserves 10% of the funds deposited for withdrawals.
-              If in any given week the 10% withdrawal limit is reached,
-              withdrawals from the vault will be disabled and depositors will
-              have to wait until the following week in order to withdraw their
-              funds.
-              <br />
-              <br />
-              Withdrawing from the vault has a fixed withdrawal fee of{" "}
-              {withdrawalFee}%. This is to encourage longer-term depositors.
-            </>
-          );
-        case "v2":
-          return (
-            <>
-              Once user funds have been used in the vault’s weekly strategy they
-              cannot be withdrawn until the vault closes it’s position the
-              following Friday at 10am UTC.
-              <br />
-              <br />
-              Users can withdraw their funds instantly during the weekly
-              timelock period where the vault closes it’s previous position and
-              opens its new position.{" "}
-            </>
-          );
-      }
-    },
-    []
+  const renderWithdrawalsSection = (
+    <>
+      Once user funds have been used in the vault's strategy, they cannot be
+      withdrawn until the vault closes its position in the following round.
+      <br />
+      <br />
+      Users can withdraw their funds instantly during the timelock period where
+      the vault closes its previous position and opens its new position.{" "}
+    </>
   );
+
+  if (!vault) {
+    return (
+      <Container>
+        {active && (
+          <>
+            <Paragraph>
+              <ParagraphHeading>Strategy Snapshot</ParagraphHeading>
+              <EmptyStrategySnapshot />
+            </Paragraph>
+          </>
+        )}
+
+        {active && (
+          <Paragraph>
+            <ParagraphHeading>Withdrawals</ParagraphHeading>
+            <ParagraphText>{renderWithdrawalsSection}</ParagraphText>
+          </Paragraph>
+        )}
+
+        {
+          <Paragraph>
+            <ParagraphHeading>FEE STRUCTURE</ParagraphHeading>
+            <ParagraphText>
+              The vault fee structure consists of a 2% annualised management fee
+              and a 10% performance fee.
+              <br />
+              <br />
+              The performance fee is charged on the premiums earned in USDC and
+              the management fee is charged on the assets managed by the vault.
+            </ParagraphText>
+          </Paragraph>
+        }
+
+        <Paragraph>
+          <ParagraphHeading>Risk</ParagraphHeading>
+          <ParagraphText>
+            {treasuryCopy.vaultRisk}
+            <br />
+            <br />
+            The Treasury Vault smart contracts have not been audited. Users are
+            advised to exercise caution and only risk funds they can afford to
+            lose.
+          </ParagraphText>
+        </Paragraph>
+      </Container>
+    );
+  }
+
+  const { vaultOption, vaultVersion } = vault;
+  const asset = getAssets(vaultOption);
 
   return (
     <Container>
@@ -113,17 +171,11 @@ const PerformanceSection: React.FC<PerformanceSectionProps> = ({
           </Paragraph>
         </>
       )}
-{/* 
-      <Paragraph>
-        <VaultPerformanceChart vault={vault} />
-      </Paragraph> */}
 
       {active && (
         <Paragraph>
           <ParagraphHeading>Withdrawals</ParagraphHeading>
-          <ParagraphText>
-            {renderWithdrawalsSection(vaultOption, vaultVersion)}
-          </ParagraphText>
+          <ParagraphText>{renderWithdrawalsSection}</ParagraphText>
         </Paragraph>
       )}
 
@@ -137,12 +189,8 @@ const PerformanceSection: React.FC<PerformanceSectionProps> = ({
             fee.
             <br />
             <br />
-            If the weekly strategy is profitable, the weekly performance fee is
-            charged on the premiums earned and the weekly management fee is
-            charged on the assets managed by the vault.
-            <br />
-            <br />
-            If the weekly strategy is unprofitable, there are no fees charged.
+            The performance fee is charged on the premiums earned in USDC and
+            the management fee is charged on the assets managed by the vault.
           </ParagraphText>
         </Paragraph>
       )}
@@ -150,35 +198,12 @@ const PerformanceSection: React.FC<PerformanceSectionProps> = ({
       <Paragraph>
         <ParagraphHeading>Risk</ParagraphHeading>
         <ParagraphText>
-          {productCopies[vaultOption].vaultRisk}
+          {treasuryCopy.vaultRisk}
           <br />
           <br />
-          The Theta Vault smart contracts have been{" "}
-          <Link
-            href="https://github.com/peckshield/publications/blob/master/audit_reports/PeckShield-Audit-Report-Ribbon-v1.0.pdf"
-            target="_blank"
-            rel="noreferrer noopener"
-          >
-            audited by Peckshield
-          </Link>
-          ,{" "}
-          <Link
-            href="https://github.com/ribbon-finance/audit/blob/master/reports/Quantstamp%20Theta%20Vault.pdf"
-            target="_blank"
-            rel="noreferrer noopener"
-          >
-            Quantstamp
-          </Link>{" "}
-          and{" "}
-          <Link
-            href="https://github.com/ribbon-finance/audit/blob/master/reports/Chainsafe-Ribbon-Audit_April-2021.pdf"
-            target="_blank"
-            rel="noreferrer noopener"
-          >
-            ChainSafe
-          </Link>
-          . Despite that, users are advised to exercise caution and only risk
-          funds they can afford to lose.
+          The Treasury Vault smart contracts have not been audited. Users are
+          advised to exercise caution and only risk funds they can afford to
+          lose.
         </ParagraphText>
 
         <PrimaryText className="d-block mt-3">

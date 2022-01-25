@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo } from "react";
-import { useWeb3React } from "@web3-react/core";
+import { useWeb3Wallet } from "webapp/lib/hooks/useWeb3Wallet";
 import { BigNumber, ethers } from "ethers";
 import styled from "styled-components";
 
@@ -11,7 +11,7 @@ import {
 } from "shared/lib/designSystem";
 import colors from "shared/lib/designSystem/colors";
 import theme from "shared/lib/designSystem/theme";
-import useAssetPrice from "../../hooks/useAssetPrice";
+import useAssetPrice from "shared/lib/hooks/useAssetPrice";
 import useTextAnimation from "shared/lib/hooks/useTextAnimation";
 import { CurrencyType } from "../../pages/Portfolio/types";
 import {
@@ -23,22 +23,22 @@ import sizes from "shared/lib/designSystem/sizes";
 import {
   getAssets,
   getDisplayAssets,
-  VaultList,
+  TreasuryVaultList,
   VaultNameOptionMap,
   VaultOptions,
   VaultVersion,
   VaultVersionList,
-} from "../../constants/constants";
-import { productCopies } from "../Product/productCopies";
-import { useAllVaultAccounts } from "../../hooks/useVaultAccounts";
-import { VaultAccount } from "../../models/vault";
+} from "shared/lib/constants/constants";
+import { productCopies } from "shared/lib/components/Product/productCopies";
+import { useAllVaultAccounts } from "shared/lib/hooks/useVaultAccounts";
+import { VaultAccount } from "shared/lib/models/vault";
 import {
   getAssetDecimals,
   getAssetDisplay,
   getAssetLogo,
-} from "../../utils/asset";
-import { getVaultColor } from "../../utils/vault";
-import { getVaultURI } from "../../constants/constants";
+} from "shared/lib/utils/asset";
+import { getVaultColor } from "shared/lib/utils/vault";
+import { getVaultURI } from "webapp/lib/constants/constants";
 
 const PortfolioPositionsContainer = styled.div`
   margin-top: 64px;
@@ -88,14 +88,6 @@ const PositionMainContainer = styled.div`
   background: ${colors.background.two};
   border-radius: ${theme.border.radius};
   z-index: 2;
-`;
-
-const PositionStakedContainer = styled(PositionMainContainer)`
-  margin-top: -16px;
-  padding-top: calc(16px + 16px);
-  background: ${colors.background.three};
-  border-radius: ${theme.border.radius};
-  z-index: 1;
 `;
 
 const LogoContainer = styled.div<{ color: string }>`
@@ -175,17 +167,6 @@ const KPIDatas = styled.div`
   justify-content: center;
 `;
 
-const KPIRoi = styled(Title)<{ variant: "red" | "green" }>`
-  ${(props) => {
-    switch (props.variant) {
-      case "green":
-        return `color: ${colors.green};`;
-      case "red":
-        return `color: ${colors.red};`;
-    }
-  }}
-`;
-
 interface PortfolioPositionProps {
   vaultAccount: VaultAccount;
   vaultVersion: VaultVersion;
@@ -222,18 +203,6 @@ const PortfolioPosition: React.FC<PortfolioPositionProps> = ({
     },
     [asset, assetPrice, animatedLoadingText, assetPriceLoading, decimals]
   );
-
-  const calculatedROI = useMemo(() => {
-    const netProfit = vaultAccount.totalBalance.sub(vaultAccount.totalDeposits);
-
-    return !isPracticallyZero(vaultAccount.totalDeposits, decimals)
-      ? (parseFloat(ethers.utils.formatUnits(netProfit, decimals)) /
-          parseFloat(
-            ethers.utils.formatUnits(vaultAccount.totalDeposits, decimals)
-          )) *
-          100
-      : 0;
-  }, [vaultAccount, decimals]);
 
   const logo = useMemo(() => {
     const displayAsset = getDisplayAssets(vaultAccount.vault.symbol);
@@ -288,8 +257,7 @@ const PortfolioPosition: React.FC<PortfolioPositionProps> = ({
               </PositionSecondaryInfoText>
             </PositionInfoRow>
             <KPIContainer>
-              <KPIDatas>
-              </KPIDatas>
+              <KPIDatas></KPIDatas>
             </KPIContainer>
           </PositionInfo>
         </PositionMainContainer>
@@ -299,16 +267,16 @@ const PortfolioPosition: React.FC<PortfolioPositionProps> = ({
 };
 
 const PortfolioPositions = () => {
-  const { active } = useWeb3React();
+  const { active } = useWeb3Wallet();
   const {
     data: { v1: v1VaultAccounts, v2: v2VaultAccounts },
     loading,
   } = useAllVaultAccounts();
   const animatedLoadingText = useTextAnimation(loading);
-  
+
   const filteredVaultAccounts = useMemo(() => {
     return Object.fromEntries(
-      VaultList.map((vaultOption) => [
+      TreasuryVaultList.map((vaultOption) => [
         vaultOption,
         Object.fromEntries(
           VaultVersionList.map((vaultVersion) => {
@@ -332,15 +300,11 @@ const PortfolioPositions = () => {
           })
         ),
       ]).filter((item) => Object.keys(item[1]).length > 0)
-    ) as Partial<
-      {
-        [vault in VaultOptions]: Partial<
-          {
-            [version in VaultVersion]: VaultAccount;
-          }
-        >;
-      }
-    >;
+    ) as Partial<{
+      [vault in VaultOptions]: Partial<{
+        [version in VaultVersion]: VaultAccount;
+      }>;
+    }>;
   }, [v1VaultAccounts, v2VaultAccounts]);
 
   const positionContent = useMemo(() => {

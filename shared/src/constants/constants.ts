@@ -8,17 +8,29 @@ import {
   getSubgraphqlURI,
   isDevelopment,
   isProduction,
+  isTreasury,
 } from "../utils/env";
 import v1deployment from "./v1Deployments.json";
 import v2deployment from "./v2Deployments.json";
 import addresses from "./externalAddresses.json";
 
-export type NETWORK_NAMES = "mainnet" | "kovan" | "fuji" | "avax";
+export type NETWORK_NAMES =
+  | "mainnet"
+  | "kovan"
+  | "fuji"
+  | "avax"
+  | "aurora"
+  | "aurora-testnet";
+export type TESTNET_NAMES = "kovan" | "fuji" | "aurora-testnet";
+export type MAINNET_NAMES = Exclude<NETWORK_NAMES, TESTNET_NAMES>;
+
 export const NETWORKS: Record<number, NETWORK_NAMES> = {
   [CHAINID.ETH_MAINNET]: "mainnet",
   [CHAINID.ETH_KOVAN]: "kovan",
   [CHAINID.AVAX_FUJI]: "fuji",
   [CHAINID.AVAX_MAINNET]: "avax",
+  [CHAINID.AURORA_MAINNET]: "aurora",
+  [CHAINID.AURORA_TESTNET]: "aurora-testnet",
 };
 
 export const CHAINID_TO_NATIVE_TOKENS: Record<CHAINID, Assets> = {
@@ -26,12 +38,16 @@ export const CHAINID_TO_NATIVE_TOKENS: Record<CHAINID, Assets> = {
   [CHAINID.ETH_KOVAN]: "WETH",
   [CHAINID.AVAX_MAINNET]: "WAVAX",
   [CHAINID.AVAX_FUJI]: "WAVAX",
+  [CHAINID.AURORA_MAINNET]: "AURORA", // Native token is really WETH
+  [CHAINID.AURORA_TESTNET]: "AURORA", // Native token is really WETH
 };
 export const READABLE_NETWORK_NAMES: Record<CHAINID, string> = {
   [CHAINID.ETH_MAINNET]: "Ethereum",
   [CHAINID.ETH_KOVAN]: "Kovan",
   [CHAINID.AVAX_MAINNET]: "Avalanche",
   [CHAINID.AVAX_FUJI]: "Fuji",
+  [CHAINID.AURORA_MAINNET]: "Aurora",
+  [CHAINID.AURORA_TESTNET]: "Aurora Testnet",
 };
 
 export const isEthNetwork = (chainId: number): boolean =>
@@ -39,6 +55,25 @@ export const isEthNetwork = (chainId: number): boolean =>
 
 export const isAvaxNetwork = (chainId: number): boolean =>
   chainId === CHAINID.AVAX_MAINNET || chainId === CHAINID.AVAX_FUJI;
+
+export const isAuroraNetwork = (chainId: number): boolean =>
+  chainId === CHAINID.AURORA_MAINNET;
+
+export const isEthVault = (vault: string) =>
+  isEthNetwork(VaultAddressMap[vault as VaultOptions].chainId);
+
+export const isAvaxVault = (vault: string) =>
+  isAvaxNetwork(VaultAddressMap[vault as VaultOptions].chainId);
+
+export const isAuroraVault = (vault: string) =>
+  isAuroraNetwork(VaultAddressMap[vault as VaultOptions].chainId);
+
+export const getVaultNetwork = (vault: string): MAINNET_NAMES => {
+  if (isEthVault(vault)) return "mainnet";
+  else if (isAvaxVault(vault)) return "avax";
+  else if (isAuroraVault(vault)) return "aurora";
+  else throw new Error(`Unknown network for ${vault}`);
+};
 
 export const NATIVE_TOKENS = ["WETH", "WAVAX"];
 export const isNativeToken = (token: string): boolean =>
@@ -48,27 +83,40 @@ export const VaultVersionList = ["v2", "v1"] as const;
 export type VaultVersion = typeof VaultVersionList[number];
 export type VaultVersionExcludeV1 = Exclude<VaultVersion, "v1">;
 
-export const FullVaultList = [
+export const RetailVaultList = [
   "rAAVE-THETA",
   "rAVAX-THETA",
+  "rAURORA-THETA",
+  "rNEAR-THETA",
   "rstETH-THETA",
   "ryvUSDC-ETH-P-THETA",
   "rETH-THETA",
   "rBTC-THETA",
   "rUSDC-ETH-P-THETA",
+  "rSOL-THETA",
 ] as const;
 
-export type VaultOptions = typeof FullVaultList[number];
-const ProdExcludeVault: VaultOptions[] = [];
+export const TreasuryVaultList = ["rPERP-TSRY"] as const;
+
+const AllVaultOptions = [...RetailVaultList, ...TreasuryVaultList];
+
+export type VaultOptions = typeof AllVaultOptions[number];
+const ProdExcludeVault: VaultOptions[] = [
+  "rSOL-THETA",
+  "rNEAR-THETA",
+  "rAURORA-THETA",
+];
 const PutThetaVault: VaultOptions[] = [
   "rUSDC-ETH-P-THETA",
   "ryvUSDC-ETH-P-THETA",
 ];
 
 // @ts-ignore
-export const VaultList: VaultOptions[] = !isProduction()
-  ? FullVaultList
-  : FullVaultList.filter((vault) => !ProdExcludeVault.includes(vault));
+export const VaultList: VaultOptions[] = isTreasury()
+  ? TreasuryVaultList
+  : !isProduction()
+  ? RetailVaultList
+  : RetailVaultList.filter((vault) => !ProdExcludeVault.includes(vault));
 
 export const GAS_LIMITS: {
   [vault in VaultOptions]: Partial<{
@@ -145,13 +193,39 @@ export const GAS_LIMITS: {
       completeWithdraw: 300000,
     },
   },
+  "rPERP-TSRY": {
+    v2: {
+      deposit: 380000,
+      withdrawInstantly: 130000,
+      completeWithdraw: 300000,
+    },
+  },
+  "rSOL-THETA": {
+    v2: {
+      deposit: 380000,
+      withdrawInstantly: 130000,
+      completeWithdraw: 300000,
+    },
+  },
+  "rNEAR-THETA": {
+    v2: {
+      deposit: 380000,
+      withdrawInstantly: 130000,
+      completeWithdraw: 300000,
+    },
+  },
+  "rAURORA-THETA": {
+    v2: {
+      deposit: 380000,
+      withdrawInstantly: 130000,
+      completeWithdraw: 300000,
+    },
+  },
 };
 
-export const VaultLiquidityMiningMap: Partial<
-  {
-    [vault in VaultOptions]: string;
-  }
-> = isDevelopment()
+export const VaultLiquidityMiningMap: Partial<{
+  [vault in VaultOptions]: string;
+}> = isDevelopment()
   ? {
       "rUSDC-ETH-P-THETA": v1deployment.kovan.RibbonETHPutStakingReward,
       "rBTC-THETA": v1deployment.kovan.RibbonWBTCCoveredCallStakingReward,
@@ -211,8 +285,7 @@ export const VaultAddressMap: {
       }
     : {
         v1: v1deployment.mainnet.RibbonYearnETHPut,
-        // TODO: Uncomment on V2 yvUSDC launch
-        // v2: v2deployment.mainnet.RibbonThetaYearnVaultETHPut,
+        v2: v2deployment.mainnet.RibbonThetaYearnVaultETHPut,
         chainId: CHAINID.ETH_MAINNET,
       },
   "rstETH-THETA": isDevelopment()
@@ -241,13 +314,40 @@ export const VaultAddressMap: {
       },
   "rAVAX-THETA": isDevelopment()
     ? {
-        v2: v2deployment.fuji.RibbonThetaVaultETHCall,
+        v2: v2deployment.fuji.RibbonThetaVaultAVAXCall,
         chainId: CHAINID.AVAX_FUJI,
       }
     : {
-        v2: v2deployment.avax.RibbonThetaVaultETHCall,
+        v2: v2deployment.avax.RibbonThetaVaultAVAXCall,
         chainId: CHAINID.AVAX_MAINNET,
       },
+  "rPERP-TSRY": isDevelopment()
+    ? {
+        v2: v2deployment.kovan.RibbonTreasuryVaultPERP,
+        chainId: CHAINID.ETH_KOVAN,
+      }
+    : {
+        v2: v2deployment.mainnet.RibbonTreasuryVaultPERP,
+        chainId: CHAINID.ETH_MAINNET,
+      },
+  // FIXME: change with real addresses
+  "rSOL-THETA": isDevelopment()
+    ? {
+        v2: v2deployment.kovan.RibbonTreasuryVaultPERP,
+        chainId: CHAINID.ETH_KOVAN,
+      }
+    : {
+        v2: v2deployment.mainnet.RibbonTreasuryVaultPERP,
+        chainId: CHAINID.ETH_MAINNET,
+      },
+  "rNEAR-THETA": {
+    v2: v2deployment.aurora.RibbonThetaVaultWNEARCall,
+    chainId: CHAINID.AURORA_MAINNET,
+  },
+  "rAURORA-THETA": {
+    v2: v2deployment.aurora.RibbonThetaVaultAURORACall,
+    chainId: CHAINID.AURORA_MAINNET,
+  },
 };
 
 /**
@@ -274,6 +374,10 @@ export const VaultNamesList = [
   "T-stETH-C",
   "T-AAVE-C",
   "T-AVAX-C",
+  "T-PERP-C",
+  "T-SOL-C",
+  "T-WNEAR-C",
+  "T-AURORA-C",
 ] as const;
 export type VaultName = typeof VaultNamesList[number];
 export const VaultNameOptionMap: { [name in VaultName]: VaultOptions } = {
@@ -284,6 +388,10 @@ export const VaultNameOptionMap: { [name in VaultName]: VaultOptions } = {
   "T-stETH-C": "rstETH-THETA",
   "T-AAVE-C": "rAAVE-THETA",
   "T-AVAX-C": "rAVAX-THETA",
+  "T-PERP-C": "rPERP-TSRY",
+  "T-SOL-C": "rSOL-THETA",
+  "T-AURORA-C": "rAURORA-THETA",
+  "T-WNEAR-C": "rNEAR-THETA",
 };
 
 export const BLOCKCHAIN_EXPLORER_NAME: Record<number, string> = {
@@ -291,6 +399,7 @@ export const BLOCKCHAIN_EXPLORER_NAME: Record<number, string> = {
   [CHAINID.ETH_KOVAN]: "Etherscan",
   [CHAINID.AVAX_MAINNET]: "SnowTrace",
   [CHAINID.AVAX_FUJI]: "SnowTrace",
+  [CHAINID.AURORA_MAINNET]: "BlockScout",
 };
 
 export const BLOCKCHAIN_EXPLORER_URI: Record<number, string> = {
@@ -298,16 +407,19 @@ export const BLOCKCHAIN_EXPLORER_URI: Record<number, string> = {
   [CHAINID.ETH_KOVAN]: "https://kovan.etherscan.io",
   [CHAINID.AVAX_MAINNET]: "https://snowtrace.io",
   [CHAINID.AVAX_FUJI]: "https://testnet.snowtrace.io",
+  [CHAINID.AURORA_MAINNET]: "https://explorer.mainnet.aurora.dev",
 };
+
+export const AVAX_BRIDGE_URI = "https://bridge.avax.network";
 
 export const getEtherscanURI = (chainId: number) =>
   BLOCKCHAIN_EXPLORER_URI[chainId as CHAINID];
 
 export const getSubgraphURIForVersion = (
-  vaultVersion: VaultVersion,
+  version: VaultVersion,
   chainId: number
 ) => {
-  switch (vaultVersion) {
+  switch (version) {
     case "v1":
       return getSubgraphqlURI();
     case "v2":
@@ -329,6 +441,14 @@ export const getAssets = (vault: VaultOptions): Assets => {
       return "AAVE";
     case "rAVAX-THETA":
       return "WAVAX";
+    case "rPERP-TSRY":
+      return "PERP";
+    case "rSOL-THETA":
+      return "SOL";
+    case "rAURORA-THETA":
+      return "AURORA";
+    case "rNEAR-THETA":
+      return "WNEAR";
   }
 };
 
@@ -345,6 +465,14 @@ export const getOptionAssets = (vault: VaultOptions): Assets => {
       return "AAVE";
     case "rAVAX-THETA":
       return "WAVAX";
+    case "rPERP-TSRY":
+      return "PERP";
+    case "rSOL-THETA":
+      return "SOL";
+    case "rAURORA-THETA":
+      return "AURORA";
+    case "rNEAR-THETA":
+      return "WNEAR";
   }
 };
 
@@ -364,18 +492,30 @@ export const getDisplayAssets = (vault: VaultOptions): Assets => {
       return "AAVE";
     case "rAVAX-THETA":
       return "WAVAX";
+    case "rPERP-TSRY":
+      return "PERP";
+    case "rSOL-THETA":
+      return "SOL";
+    case "rAURORA-THETA":
+      return "AURORA";
+    case "rNEAR-THETA":
+      return "WNEAR";
   }
 };
 
 export const VaultAllowedDepositAssets: { [vault in VaultOptions]: Assets[] } =
   {
     "rAAVE-THETA": ["AAVE"],
+    "rAURORA-THETA": ["AURORA"],
+    "rNEAR-THETA": ["WNEAR"],
     "rBTC-THETA": ["WBTC"],
     "rETH-THETA": ["WETH"],
     "rAVAX-THETA": ["WAVAX"],
     "rUSDC-ETH-P-THETA": ["USDC"],
-    "rstETH-THETA": ["stETH", "WETH"],
+    "rstETH-THETA": ["WETH", "stETH"],
     "ryvUSDC-ETH-P-THETA": ["USDC"],
+    "rPERP-TSRY": ["PERP"],
+    "rSOL-THETA": ["SOL"],
   };
 
 export const VaultMaxDeposit: { [vault in VaultOptions]: BigNumber } = {
@@ -400,6 +540,20 @@ export const VaultMaxDeposit: { [vault in VaultOptions]: BigNumber } = {
   ),
   "rAVAX-THETA": BigNumber.from(100000000).mul(
     BigNumber.from(10).pow(getAssetDecimals(getAssets("rAVAX-THETA")))
+  ),
+  "rPERP-TSRY": BigNumber.from(100000000).mul(
+    // Cap still not decided
+    BigNumber.from(10).pow(getAssetDecimals(getAssets("rPERP-TSRY")))
+  ),
+  // FIXME: change with real numbers
+  "rSOL-THETA": BigNumber.from(100000000).mul(
+    BigNumber.from(10).pow(getAssetDecimals(getAssets("rAVAX-THETA")))
+  ),
+  "rNEAR-THETA": BigNumber.from(100000000).mul(
+    BigNumber.from(10).pow(getAssetDecimals(getAssets("rNEAR-THETA")))
+  ),
+  "rAURORA-THETA": BigNumber.from(100000000).mul(
+    BigNumber.from(10).pow(getAssetDecimals(getAssets("rAURORA-THETA")))
   ),
 };
 
@@ -459,24 +613,63 @@ export const VaultFees: {
       performanceFee: "10",
     },
   },
+  "rPERP-TSRY": {
+    v2: {
+      managementFee: "2",
+      performanceFee: "10",
+    },
+  },
+  // FIXME: Change with real values
+  "rSOL-THETA": {
+    v2: {
+      managementFee: "2",
+      performanceFee: "10",
+    },
+  },
+  "rAURORA-THETA": {
+    v2: {
+      managementFee: "2",
+      performanceFee: "10",
+    },
+  },
+  "rNEAR-THETA": {
+    v2: {
+      managementFee: "2",
+      performanceFee: "10",
+    },
+  },
 };
 
-export const RibbonVaultMigrationMap: Partial<
-  {
-    [vault in VaultOptions]: Partial<
-      { [version in VaultVersionExcludeV1]: Array<VaultOptions> }
-    >;
-  }
-> = {
+export const RibbonVaultMigrationMap: Partial<{
+  [vault in VaultOptions]: Partial<{
+    [version in VaultVersionExcludeV1]: Array<VaultOptions>;
+  }>;
+}> = {
   "rBTC-THETA": {
     v2: ["rBTC-THETA"],
   },
+  // TODO: Once we enable migrations into stETH vault
+  // We can uncomment this
+  // "rstETH-THETA": {
+  //   v2: ["rETH-THETA"],
+  // },
   "rETH-THETA": {
     v2: ["rETH-THETA"],
   },
   "ryvUSDC-ETH-P-THETA": {
     v2: ["ryvUSDC-ETH-P-THETA", "rUSDC-ETH-P-THETA"],
   },
+};
+
+export const v1ToV2MigrationMap: Partial<{
+  [vault in VaultOptions]: VaultOptions;
+}> = {
+  "rBTC-THETA": "rBTC-THETA",
+  "rETH-THETA": "rETH-THETA",
+  // TODO: Uncomment this
+  // "rETH-THETA": "rstETH-THETA",
+  "rUSDC-ETH-P-THETA": "ryvUSDC-ETH-P-THETA",
+  "ryvUSDC-ETH-P-THETA": "ryvUSDC-ETH-P-THETA",
 };
 
 export const RibbonTokenAddress = isDevelopment()
@@ -504,3 +697,26 @@ export const CurveSwapSlippage = 0.008; // 0.8%
 export const LidoOracleAddress = isDevelopment()
   ? ""
   : addresses.mainnet.lidoOracle;
+
+export const SUBGRAPHS_TO_QUERY: [VaultVersion, CHAINID][] = isDevelopment()
+  ? !isTreasury()
+    ? [
+        ["v1", CHAINID.ETH_KOVAN],
+        ["v2", CHAINID.ETH_KOVAN],
+        ["v2", CHAINID.AVAX_FUJI],
+        ["v2", CHAINID.AURORA_MAINNET],
+      ]
+    : [["v2", CHAINID.ETH_KOVAN]]
+  : !isTreasury()
+  ? [
+      ["v1", CHAINID.ETH_MAINNET],
+      ["v2", CHAINID.ETH_MAINNET],
+      ["v2", CHAINID.AVAX_MAINNET],
+      ["v2", CHAINID.AURORA_MAINNET],
+    ]
+  : [["v2", CHAINID.ETH_MAINNET]];
+
+export const RibbonTreasuryAddress = {
+  [CHAINID.ETH_KOVAN]: "0xD380980791079Bd50736Ffe577b8D57A3C196ccd",
+  [CHAINID.ETH_MAINNET]: "0xDAEada3d210D2f45874724BeEa03C7d4BBD41674",
+};

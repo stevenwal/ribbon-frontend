@@ -6,28 +6,27 @@ import { useLocation } from "react-router-dom";
 
 import colors from "shared/lib/designSystem/colors";
 import {
+  isNativeToken,
   VaultAddressMap,
   VaultAllowedDepositAssets,
   VaultMaxDeposit,
   VaultOptions,
-} from "../../../../constants/constants";
-import { ACTIONS } from "../Modal/types";
-import useVaultActionForm from "../../../../hooks/useVaultActionForm";
-import { SecondaryText, Title } from "shared/lib/designSystem";
-import useTokenAllowance from "../../../../hooks/useTokenAllowance";
+} from "shared/lib/constants/constants";
+import { ACTIONS } from "webapp/lib/components/Vault/VaultActionsForm/Modal/types";
+import useVaultActionForm from "webapp/lib/hooks/useVaultActionForm";
+import { Title } from "shared/lib/designSystem";
+import useTokenAllowance from "shared/lib/hooks/useTokenAllowance";
 import {
   useV2VaultData,
   useAssetBalance,
-} from "../../../../hooks/web3DataContext";
-import { ERC20Token } from "../../../../models/eth";
-import { isVaultFull } from "../../../../utils/vault";
+} from "shared/lib/hooks/web3DataContext";
+import { ERC20Token } from "shared/lib/models/eth";
+import { isVaultFull } from "shared/lib/utils/vault";
 import { formatBigNumber, isPracticallyZero } from "shared/lib/utils/math";
-import VaultApprovalForm from "../common/VaultApprovalForm";
-import ButtonArrow from "shared/lib/components/Common/ButtonArrow";
-import theme from "shared/lib/designSystem/theme";
-import VaultBasicAmountForm from "../common/VaultBasicAmountForm";
-import { getAssetDisplay } from "../../../..//utils/asset";
-import { VaultValidationErrors } from "../types";
+import VaultApprovalForm from "webapp/lib/components/Vault/VaultActionsForm/common/VaultApprovalForm";
+import VaultBasicAmountForm from "webapp/lib/components/Vault/VaultActionsForm/common/VaultBasicAmountForm";
+import { getAssetDisplay } from "shared/lib/utils/asset";
+import { VaultValidationErrors } from "webapp/lib/components/Vault/VaultActionsForm/types";
 import VaultV2WithdrawForm from "./VaultV2WithdrawForm";
 
 const FormTabContainer = styled.div`
@@ -84,25 +83,6 @@ const FormInfoText = styled(Title)`
   color: ${(props) => (props.color ? props.color : colors.text)};
 `;
 
-const SwapTriggerContainer = styled.div`
-  display: flex;
-  justify-content: center;
-`;
-
-const SwapTriggerButton = styled.div`
-  margin-top: 24px;
-  border: ${theme.border.width} ${theme.border.style} ${colors.border};
-  border-radius: 100px;
-  padding: 8px 16px;
-  width: 300px;
-  display: flex;
-  align-items: center;
-`;
-
-const SwapTriggerButtonText = styled(SecondaryText)`
-  flex: 1;
-`;
-
 interface VaultV2DepositWithdrawFormProps {
   vaultOption: VaultOptions;
   onFormSubmit: () => void;
@@ -150,7 +130,7 @@ const VaultV2DepositWithdrawForm: React.FC<VaultV2DepositWithdrawFormProps> = ({
    * Side hooks
    */
   const tokenAllowance = useTokenAllowance(
-    vaultActionForm.depositAsset === "WETH"
+    isNativeToken(vaultActionForm.depositAsset || asset)
       ? undefined
       : ((vaultActionForm.depositAsset?.toLowerCase() ||
           VaultAllowedDepositAssets[
@@ -206,8 +186,10 @@ const VaultV2DepositWithdrawForm: React.FC<VaultV2DepositWithdrawFormProps> = ({
   const showTokenApproval = useMemo(() => {
     if (vaultActionForm.actionType === ACTIONS.deposit) {
       return (
-        (vaultActionForm.depositAsset ||
-          VaultAllowedDepositAssets[vaultOption][0]) !== "WETH" &&
+        !isNativeToken(
+          vaultActionForm.depositAsset ||
+            VaultAllowedDepositAssets[vaultOption][0]
+        ) &&
         tokenAllowance &&
         isPracticallyZero(tokenAllowance, decimals)
       );
@@ -221,7 +203,6 @@ const VaultV2DepositWithdrawForm: React.FC<VaultV2DepositWithdrawFormProps> = ({
     vaultActionForm.depositAsset,
     vaultOption,
   ]);
-  const [swapContainerOpen, setSwapContainerOpen] = useState(false);
 
   const error = useMemo((): VaultValidationErrors | undefined => {
     switch (vaultActionForm.actionType) {

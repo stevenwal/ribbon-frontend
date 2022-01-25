@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import styled from "styled-components";
 import { Frame } from "framer";
-import { useWeb3React } from "@web3-react/core";
+import { useWeb3Wallet } from "webapp/lib/hooks/useWeb3Wallet";
 import { BigNumber } from "ethers";
 
 import colors from "shared/lib/designSystem/colors";
@@ -18,17 +18,20 @@ import {
   ACTIONS,
   V2WithdrawOption,
   V2WithdrawOptionList,
-} from "../Modal/types";
-import useVaultActionForm from "../../../../hooks/useVaultActionForm";
-import { getAssets, VaultOptions } from "../../../../constants/constants";
+} from "webapp/lib/components/Vault/VaultActionsForm/Modal/types";
+import useVaultActionForm from "webapp/lib/hooks/useVaultActionForm";
+import { getAssets, VaultOptions } from "shared/lib/constants/constants";
 import {
   ActionButton,
   ConnectWalletButton,
 } from "shared/lib/components/Common/buttons";
 import useConnectWalletModal from "shared/lib/hooks/useConnectWalletModal";
-import { VaultInputValidationErrorList, VaultValidationErrors } from "../types";
-import { getVaultColor } from "../../../../utils/vault";
-import { getAssetDecimals, getAssetDisplay } from "../../../../utils/asset";
+import {
+  VaultInputValidationErrorList,
+  VaultValidationErrors,
+} from "webapp/lib/components/Vault/VaultActionsForm/types";
+import { getVaultColor } from "shared/lib/utils/vault";
+import { getAssetDecimals, getAssetDisplay } from "shared/lib/utils/asset";
 import { formatBigNumber } from "shared/lib/utils/math";
 import TooltipExplanation from "shared/lib/components/Common/TooltipExplanation";
 import HelpInfo from "shared/lib/components/Common/HelpInfo";
@@ -124,7 +127,7 @@ const VaultV2WithdrawForm: React.FC<VaultV2WithdrawFormProps> = ({
     vaultActionForm,
     withdrawMetadata,
   } = useVaultActionForm(vaultOption);
-  const { active } = useWeb3React();
+  const { active } = useWeb3Wallet();
   const [, setShowConnectModal] = useConnectWalletModal();
 
   const [activeBackgroundState, setActiveBackgroundState] = useState<
@@ -183,7 +186,7 @@ const VaultV2WithdrawForm: React.FC<VaultV2WithdrawFormProps> = ({
           return (
             <TooltipExplanation
               title="INSTANT WITHDRAWAL"
-              explanation="Instant withdrawals are for funds that have been deposited but not yet deployed in the vault’s weekly strategy. Because these funds haven’t been deployed they can be withdrawn immediately."
+              explanation="Instant withdrawals are for funds that have been deposited but not yet deployed in the vault’s strategy. Because these funds haven’t been deployed they can be withdrawn immediately."
               renderContent={({ ref, ...triggerHandler }) => (
                 <HelpInfo
                   containerRef={ref}
@@ -203,8 +206,7 @@ const VaultV2WithdrawForm: React.FC<VaultV2WithdrawFormProps> = ({
               explanation={
                 <>
                   Standard withdrawals are for funds that have been deployed in
-                  the vault's weekly strategy and involve a 2-step withdrawal
-                  process.
+                  the vault's strategy and involve a 2-step withdrawal process.
                   <br />
                   <br />
                   Step 1: Users need to remove their funds from the vault's pool
@@ -212,7 +214,7 @@ const VaultV2WithdrawForm: React.FC<VaultV2WithdrawFormProps> = ({
                   <br />
                   <br />
                   Step 2: Initiated withdrawals are removed from the vault's
-                  pool of investable capital every Friday at 10am UTC and once
+                  pool of investable capital in the following round and once
                   this happens users can complete their withdrawals and remove
                   their funds from the vault.
                 </>
@@ -255,7 +257,7 @@ const VaultV2WithdrawForm: React.FC<VaultV2WithdrawFormProps> = ({
             <SecondaryText>Instant withdraw limit</SecondaryText>
             <TooltipExplanation
               title="INSTANT WITHDRAW LIMIT"
-              explanation="This is equal to the value of your funds that are currently not invested in the vault’s weekly strategy. These funds can withdrawn from the vault immediately."
+              explanation="This is equal to the value of your funds that are currently not invested in the vault’s strategy. These funds can withdrawn from the vault immediately."
               renderContent={({ ref, ...triggerHandler }) => (
                 <HelpInfo containerRef={ref} {...triggerHandler}>
                   i
@@ -298,13 +300,13 @@ const VaultV2WithdrawForm: React.FC<VaultV2WithdrawFormProps> = ({
                 title="PENDING WITHDRAWALS"
                 explanation={
                   <>
-                    This is the total amount of ETH you’ve requested to withdraw
-                    from the vault’s pool of investable capital.
+                    This is the total amount of tokens you’ve requested to
+                    withdraw from the vault’s pool of investable capital.
                     <br />
                     <br />
-                    On Friday at 10am UTC, the vault will close it’s weekly
-                    position and remove the amount of ETH you requested from its
-                    pool of investable capital. You can then complete your
+                    On the next round's closing, the vault will close its
+                    position and remove the amount of tokens you requested from
+                    its pool of investable capital. You can then complete your
                     withdrawal and remove your funds from the vault.
                   </>
                 }
@@ -456,7 +458,7 @@ const VaultV2WithdrawForm: React.FC<VaultV2WithdrawFormProps> = ({
       {/* Input */}
       <BaseInputLabel className="mt-4">AMOUNT ({assetDisplay})</BaseInputLabel>
       <BaseInputContainer
-        className="position-relative mb-2"
+        className="mb-2"
         error={error ? VaultInputValidationErrorList.includes(error) : false}
       >
         <BaseInput

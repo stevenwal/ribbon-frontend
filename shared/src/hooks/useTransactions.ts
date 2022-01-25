@@ -25,9 +25,9 @@ export const transactionsGraphql = (account: string, version: VaultVersion) => `
   }
 `;
 
-export const resolveTransactionsSubgraphResponse = (
-  responses: { [vault in VaultVersion]: any | undefined }
-): VaultTransaction[] =>
+export const resolveTransactionsSubgraphResponse = (responses: {
+  [version in VaultVersion]: any | undefined;
+}): VaultTransaction[] =>
   VaultVersionList.flatMap((version) =>
     responses[version] && responses[version].vaultTransactions
       ? responses[version].vaultTransactions.map((transaction: any) => ({
@@ -43,8 +43,8 @@ export const useTransactions = () => {
   const contextData = useContext(SubgraphDataContext);
 
   return {
-    transactions: contextData.transactions,
-    loading: contextData.loading,
+    transactions: contextData.vaultSubgraphData.transactions,
+    loading: contextData.vaultSubgraphData.loading,
   };
 };
 

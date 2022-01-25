@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { useWeb3React } from "@web3-react/core";
+import { useWeb3Wallet } from "webapp/lib/hooks/useWeb3Wallet";
 import { BigNumber } from "ethers";
 import styled from "styled-components";
 import moment from "moment";
@@ -13,29 +13,35 @@ import {
 } from "shared/lib/designSystem";
 import colors from "shared/lib/designSystem/colors";
 import theme from "shared/lib/designSystem/theme";
-import { useAssetsPriceHistory } from "../../hooks/useAssetPrice";
+import { useAssetsPriceHistory } from "shared/lib/hooks/useAssetPrice";
 import useTextAnimation from "shared/lib/hooks/useTextAnimation";
-import useTransactions from "../../hooks/useTransactions";
-import { CurrencyType } from "../../pages/Portfolio/types";
+import useTransactions from "shared/lib/hooks/useTransactions";
+import { CurrencyType } from "webapp/lib/pages/Portfolio/types";
 import { assetToUSD, formatBigNumber } from "shared/lib/utils/math";
 import { capitalize } from "shared/lib/utils/text";
 import {
   getAssets,
+  getEtherscanURI,
   VaultNameOptionMap,
   VaultOptions,
-  getEtherscanURI,
-} from "../../constants/constants";
-import { getAssetDecimals, getAssetDisplay, getAssetLogo } from "../../utils/asset";
-import { Assets } from "../../store/types";
+} from "shared/lib/constants/constants";
+import {
+  getAssetDecimals,
+  getAssetDisplay,
+  getAssetLogo,
+} from "shared/lib/utils/asset";
+import { Assets } from "shared/lib/store/types";
 import {
   DepositIcon,
   ExternalIcon,
   MigrateIcon,
+  StakeIcon,
   TransferIcon,
+  UnstakeIcon,
   WithdrawIcon,
 } from "shared/lib/assets/icons/icons";
-import { VaultTransactionType } from "../../models/vault";
-import { getVaultColor } from "../../utils/vault";
+import { VaultTransactionType } from "shared/lib/models/vault";
+import { getVaultColor } from "shared/lib/utils/vault";
 import {
   PortfolioTransactionActivityFilter,
   portfolioTransactionActivityFilters,
@@ -98,35 +104,6 @@ const TransactionTypeContainer = styled.div`
     margin: auto;
     margin-right: 24px;
   }
-`;
-
-const StakeOuterCircle = styled.div`
-  display: flex;
-  width: 20px;
-  height: 20px;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid #ffffff66;
-  border-radius: 10px;
-`;
-
-const StakeCircle = styled.div<{ type: "solid" | "hollow" }>`
-  height: 12px;
-  width: 12px;
-  border-radius: 6px;
-
-  ${(props) => {
-    switch (props.type) {
-      case "solid":
-        return `
-          background: ${colors.primaryText};
-        `;
-      case "hollow":
-        return `
-          border: ${theme.border.width} ${theme.border.style} ${colors.primaryText}
-        `;
-    }
-  }}
 `;
 
 const TransactionInfo = styled.div`
@@ -198,8 +175,7 @@ const perPage = 6;
 
 const PortfolioTransactions = () => {
   const { transactions, loading } = useTransactions();
-  
-  const { active, chainId } = useWeb3React();
+  const { active, chainId } = useWeb3Wallet();
   // const { prices: assetPrices, loading: assetPricesLoading } = useAssetsPrice();
   const { searchAssetPriceFromTimestamp, loading: assetPricesLoading } =
     useAssetsPriceHistory();
@@ -262,6 +238,9 @@ const PortfolioTransactions = () => {
   const getTransactionAssetText = useCallback(
     (vaultOption: VaultOptions, type: VaultTransactionType) => {
       switch (type) {
+        case "stake":
+        case "unstake":
+          return vaultOption;
         case "distribute":
           return getAssetDisplay("USDC");
         default:
@@ -285,11 +264,13 @@ const PortfolioTransactions = () => {
         case "deposit":
         case "receive":
         case "distribute":
+        case "stake":
           prependSymbol = "+";
           break;
         case "withdraw":
         case "instantWithdraw":
         case "transfer":
+        case "unstake":
           prependSymbol = "-";
       }
 
@@ -316,17 +297,21 @@ const PortfolioTransactions = () => {
     switch (type) {
       case "deposit":
       case "receive":
-        return <DepositIcon width={20} />
+        return <DepositIcon width={20} />;
       case "withdraw":
       case "instantWithdraw":
-        return <WithdrawIcon width={20} />
+        return <WithdrawIcon width={20} />;
+      case "stake":
+        return <StakeIcon />;
+      case "unstake":
+        return <UnstakeIcon />;
       case "migrate":
         return <MigrateIcon width={14} height={14} />;
       case "transfer":
         return <TransferIcon width={14} height={14} />;
       case "distribute":
         const Logo = getAssetLogo("USDC");
-        return <Logo />
+        return <Logo />;
     }
   }, []);
 
@@ -351,7 +336,7 @@ const PortfolioTransactions = () => {
         case "instantWithdraw":
           return "Instant Withdraw";
         case "distribute":
-          return "Yield Paid Out"
+          return "Yield Paid Out";
         default:
           return capitalize(type);
       }
@@ -400,10 +385,10 @@ const PortfolioTransactions = () => {
             <TransactionInfoRow>
               {/* Title */}
               <TransactionTitle
-                color={renderTransactionColor(transaction.type)}
+                color={renderTransactionColor(transaction.type)!}
                 className="mr-auto"
               >
-               {`${getTransactionTypeDisplay(transaction.type)}`}
+                {`${getTransactionTypeDisplay(transaction.type)}`}
               </TransactionTitle>
 
               {/* Amount in crypto */}
@@ -412,7 +397,9 @@ const PortfolioTransactions = () => {
                   transaction.amount,
                   transaction.type,
                   "eth",
-                  (transaction.type == "distribute") ? "USDC" : getAssets(transaction.vault.symbol),
+                  transaction.type === "distribute"
+                    ? "USDC"
+                    : getAssets(transaction.vault.symbol),
                   transaction.timestamp
                 )}
               </Title>
@@ -426,10 +413,7 @@ const PortfolioTransactions = () => {
             <TransactionInfoRow>
               {/* Type and Time */}
               <TransactionInfoText className="mr-auto">
-                {`${moment(
-                  transaction.timestamp,
-                  "X"
-                ).fromNow()}`}
+                {`${moment(transaction.timestamp, "X").fromNow()}`}
               </TransactionInfoText>
 
               {/* Amount in USD */}
@@ -438,7 +422,9 @@ const PortfolioTransactions = () => {
                   transaction.underlyingAmount,
                   transaction.type,
                   "usd",
-                  (transaction.type == "distribute") ? "USDC" : getAssets(transaction.vault.symbol),
+                  transaction.type === "distribute"
+                    ? "USDC"
+                    : getAssets(transaction.vault.symbol),
                   transaction.timestamp
                 )}
               </TransactionSecondaryInfoText>
@@ -471,7 +457,9 @@ const PortfolioTransactions = () => {
                   transaction.amount,
                   transaction.type,
                   "eth",
-                  (transaction.type == "distribute") ? "USDC" : getAssets(transaction.vault.symbol),
+                  transaction.type === "distribute"
+                    ? "USDC"
+                    : getAssets(transaction.vault.symbol),
                   transaction.timestamp
                 )}
               </TransactionInfoText>
@@ -514,6 +502,7 @@ const PortfolioTransactions = () => {
     loading,
     renderTransactionSymbol,
     renderTransactionAmountText,
+    renderTransactionColor,
     getTransactionAssetText,
   ]);
 

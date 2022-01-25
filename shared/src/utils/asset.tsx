@@ -8,9 +8,25 @@ import {
   WETHLogo,
   WAVAXLogo,
   YVUSDcLogo,
+  PERPLogo,
+  WNEARLogo,
+  AURORALogo,
 } from "../assets/icons/erc20Assets";
+import Logo from "../assets/icons/logo";
+import { SolanaLogo } from "../assets/icons/solAssets";
 import colors from "../designSystem/colors";
 import { Assets } from "../store/types";
+
+export const isYieldAsset = (asset: Assets): boolean => {
+  switch (asset) {
+    case "stETH":
+    case "wstETH":
+    case "yvUSDC":
+      return true;
+    default:
+      return false;
+  }
+};
 
 export const getAssetDisplay = (asset: Assets): string => {
   switch (asset) {
@@ -25,6 +41,8 @@ export const getAssetDisplay = (asset: Assets): string => {
 
 export const getAssetDecimals = (asset: Assets): number => {
   switch (asset) {
+    case "WNEAR":
+      return 24;
     case "WBTC":
       return 8;
     case "USDC":
@@ -130,10 +148,21 @@ export const getAssetLogo: (asset: Assets) =>
     case "yvUSDC":
       return ColoredYVUSDCLogo;
     case "stETH":
+    case "wstETH":
       return STETHLogo;
     case "AAVE":
       return AAVELogo;
     case "WAVAX":
       return WAVAXLogo;
+    case "PERP":
+      return PERPLogo;
+    case "SOL":
+      return SolanaLogo;
+    case "WNEAR":
+      return WNEARLogo;
+    case "AURORA":
+      return AURORALogo;
+    default:
+      return Logo;
   }
 };

@@ -2,22 +2,23 @@ import React, { useEffect, useMemo, useState } from "react";
 import styled from "styled-components";
 import { useHistory } from "react-router";
 
-import useVaultAccounts from "../../../hooks/useVaultAccounts";
-import { getAssetDisplay } from "../../../utils/asset";
+import useVaultAccounts from "shared/lib/hooks/useVaultAccounts";
+import { getAssetDisplay } from "shared/lib/utils/asset";
 import { formatBigNumber, isPracticallyZero } from "shared/lib/utils/math";
-import VaultV2MigrationForm from "./v2/VaultV2MigrationForm";
-import { FormStepProps } from "./types";
+import VaultV2MigrationForm from "webapp/lib/components/Vault/VaultActionsForm/v2/VaultV2MigrationForm";
+import { FormStepProps } from "webapp/lib/components/Vault/VaultActionsForm/types";
 import theme from "shared/lib/designSystem/theme";
 import colors from "shared/lib/designSystem/colors";
 import { Title, PrimaryText, SecondaryText } from "shared/lib/designSystem";
-import { getVaultColor } from "../../../utils/vault";
+import { getVaultColor } from "shared/lib/utils/vault";
 import VaultV2DepositWithdrawForm from "./v2/VaultV2DepositWithdrawForm";
-import useVaultActionForm from "../../../hooks/useVaultActionForm";
-import { ACTIONS } from "./Modal/types";
-import { useV2VaultData } from "../../../hooks/web3DataContext";
+import useVaultActionForm from "webapp/lib/hooks/useVaultActionForm";
+import { ACTIONS } from "webapp/lib/components/Vault/VaultActionsForm/Modal/types";
+import { useV2VaultData } from "shared/lib/hooks/web3DataContext";
 import { ActionButton } from "shared/lib/components/Common/buttons";
-import { getVaultURI } from "../../../constants/constants";
+import { getVaultURI } from "webapp/lib/constants/constants";
 import { WithdrawIcon } from "shared/lib/assets/icons/icons";
+import { RibbonVaultMigrationMap } from "shared/lib/constants/constants";
 
 const FormContainer = styled.div`
   display: flex;
@@ -75,17 +76,21 @@ const VaultV2ActionsForm: React.FC<FormStepProps> = ({
   const { vaultActionForm, handleActionTypeChange } =
     useVaultActionForm(vaultOption);
 
-  const canMigrate = useMemo(
+  const migrateSourceVault = useMemo(
     () =>
-      Boolean(
-        v1VaultAccounts[vaultOption] &&
-          !isPracticallyZero(
-            v1VaultAccounts[vaultOption]!.totalBalance,
-            decimals
-          )
+      RibbonVaultMigrationMap[vaultOption]?.v2?.find((_vaultOption) =>
+        Boolean(
+          v1VaultAccounts[_vaultOption] &&
+            !isPracticallyZero(
+              v1VaultAccounts[_vaultOption]!.totalBalance,
+              decimals
+            )
+        )
       ),
+
     [decimals, v1VaultAccounts, vaultOption]
   );
+
   const canCompleteWithdraw = useMemo(() => {
     return (
       vaultActionForm.withdrawOption !== "instant" &&
@@ -98,20 +103,20 @@ const VaultV2ActionsForm: React.FC<FormStepProps> = ({
    * Make sure action type cannot be migrate when user cannot migrate
    */
   useEffect(() => {
-    if (!canMigrate && vaultActionForm.actionType === "migrate") {
+    if (!migrateSourceVault && vaultActionForm.actionType === "migrate") {
       handleActionTypeChange(ACTIONS.deposit, "v2");
     }
-  }, [canMigrate, vaultActionForm.actionType, handleActionTypeChange]);
+  }, [migrateSourceVault, vaultActionForm.actionType, handleActionTypeChange]);
 
   const content = useMemo(() => {
     /**
      * Show migration form if user has balance in v1
      */
-    if (canMigrate && !hideMigrationForm) {
+    if (migrateSourceVault && !hideMigrationForm) {
       return (
         <VaultV2MigrationForm
           vaultOption={vaultOption}
-          vaultAccount={v1VaultAccounts[vaultOption]!}
+          migrateSourceVault={migrateSourceVault}
           onFormSubmit={onFormSubmit}
           onHideForm={() => setHideMigrationForm(true)}
         />
@@ -186,14 +191,13 @@ const VaultV2ActionsForm: React.FC<FormStepProps> = ({
   }, [
     asset,
     canCompleteWithdraw,
-    canMigrate,
+    migrateSourceVault,
     color,
     decimals,
     hideCompleteWithdrawReminder,
     hideMigrationForm,
     history,
     onFormSubmit,
-    v1VaultAccounts,
     vaultOption,
     withdrawals.amount,
   ]);
@@ -201,7 +205,7 @@ const VaultV2ActionsForm: React.FC<FormStepProps> = ({
   const formExtra = useMemo(() => {
     let formExtraText: JSX.Element | undefined = undefined;
 
-    if (canMigrate && !hideMigrationForm) {
+    if (migrateSourceVault && !hideMigrationForm) {
       formExtraText = (
         <>
           IMPORTANT: Withdrawal fees do not apply for migrations from V1 to V2
@@ -212,7 +216,8 @@ const VaultV2ActionsForm: React.FC<FormStepProps> = ({
         case ACTIONS.deposit:
           formExtraText = (
             <>
-              Your deposit will be deployed in the vault’s strategy in the next round
+              Your deposit will be deployed in the vault’s strategy in the next
+              round
             </>
           );
           break;
@@ -221,9 +226,8 @@ const VaultV2ActionsForm: React.FC<FormStepProps> = ({
             formExtraText =
               vaultActionForm.withdrawOption === "instant" ? (
                 <>
-                  IMPORTANT: instant withdrawals are only available before 11am
-                  UTC on Friday for funds that have not been deployed in the
-                  vault's strategy
+                  IMPORTANT: instant withdrawals are only available for funds
+                  that have not been deployed in the vault's strategy
                 </>
               ) : (
                 <>
@@ -242,9 +246,8 @@ const VaultV2ActionsForm: React.FC<FormStepProps> = ({
               formExtraText = (
                 <>
                   Instant withdrawals are unavailable because your funds have
-                  been deployed in the vault's strategy. To withdraw your
-                  funds you need to initiate a withdrawal using standard
-                  withdrawals.
+                  been deployed in the vault's strategy. To withdraw your funds
+                  you need to initiate a withdrawal using standard withdrawals.
                 </>
               );
             }
@@ -279,7 +282,7 @@ const VaultV2ActionsForm: React.FC<FormStepProps> = ({
   }, [
     asset,
     canCompleteWithdraw,
-    canMigrate,
+    migrateSourceVault,
     color,
     decimals,
     depositBalanceInAsset,

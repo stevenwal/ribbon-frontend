@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { useWeb3React } from "@web3-react/core";
+import { useWeb3Wallet } from "../../hooks/useWeb3Wallet";
 import { BigNumber } from "ethers";
 import styled from "styled-components";
 import moment from "moment";
@@ -31,7 +31,9 @@ import {
   DepositIcon,
   ExternalIcon,
   MigrateIcon,
+  StakeIcon,
   TransferIcon,
+  UnstakeIcon,
   WithdrawIcon,
 } from "shared/lib/assets/icons/icons";
 import { VaultTransactionType } from "shared/lib/models/vault";
@@ -98,35 +100,6 @@ const TransactionTypeContainer = styled.div`
     margin: auto;
     margin-right: 24px;
   }
-`;
-
-const StakeOuterCircle = styled.div`
-  display: flex;
-  width: 20px;
-  height: 20px;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid #ffffff66;
-  border-radius: 10px;
-`;
-
-const StakeCircle = styled.div<{ type: "solid" | "hollow" }>`
-  height: 12px;
-  width: 12px;
-  border-radius: 6px;
-
-  ${(props) => {
-    switch (props.type) {
-      case "solid":
-        return `
-          background: ${colors.primaryText};
-        `;
-      case "hollow":
-        return `
-          border: ${theme.border.width} ${theme.border.style} ${colors.primaryText}
-        `;
-    }
-  }}
 `;
 
 const TransactionInfo = styled.div`
@@ -198,7 +171,7 @@ const perPage = 6;
 
 const PortfolioTransactions = () => {
   const { transactions, loading } = useTransactions();
-  const { active, chainId } = useWeb3React();
+  const { active, chainId } = useWeb3Wallet();
   // const { prices: assetPrices, loading: assetPricesLoading } = useAssetsPrice();
   const { searchAssetPriceFromTimestamp, loading: assetPricesLoading } =
     useAssetsPriceHistory();
@@ -317,18 +290,14 @@ const PortfolioTransactions = () => {
     switch (type) {
       case "deposit":
       case "receive":
-        return <DepositIcon width={20} />
+        return <DepositIcon width={20} />;
       case "withdraw":
       case "instantWithdraw":
-        return <WithdrawIcon width={20} />
+        return <WithdrawIcon width={20} />;
       case "stake":
-        return (
-          <StakeOuterCircle>
-            <StakeCircle type="solid" />
-          </StakeOuterCircle>
-        );
+        return <StakeIcon />;
       case "unstake":
-        return <StakeCircle type="hollow" />;
+        return <UnstakeIcon />;
       case "migrate":
         return <MigrateIcon width={14} height={14} />;
       case "transfer":

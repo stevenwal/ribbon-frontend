@@ -3,13 +3,14 @@ import styled from "styled-components";
 import { formatUnits } from "ethers/lib/utils";
 import { AnimatePresence, motion } from "framer-motion";
 
+import { isStakingEnabledForChainId } from "shared/lib/utils/env";
 import {
   getAssets,
   getDisplayAssets,
   VaultList,
-} from "../../../constants/constants";
+} from "shared/lib/constants/constants";
 import BasicModal from "shared/lib/components/Common/BasicModal";
-import { getVaultColor } from "../../../utils/vault";
+import { getVaultColor } from "shared/lib/utils/vault";
 import {
   BaseModalContentColumn,
   SecondaryText,
@@ -21,26 +22,30 @@ import {
   getAssetDecimals,
   getAssetDisplay,
   getAssetLogo,
-} from "../../../utils/asset";
+} from "shared/lib/utils/asset";
 import colors from "shared/lib/designSystem/colors";
-import useVaultAccounts from "../../../hooks/useVaultAccounts";
+import useVaultAccounts from "shared/lib/hooks/useVaultAccounts";
 
-import { formatBigNumber, isPracticallyZero } from "shared/lib/utils/math";
+import {
+  formatBigNumber,
+  formatSignificantDecimals,
+  isPracticallyZero,
+} from "shared/lib/utils/math";
+import SegmentControl from "shared/lib/components/Common/SegmentControl";
 import { BigNumber } from "ethers";
 import TooltipExplanation from "shared/lib/components/Common/TooltipExplanation";
 import HelpInfo from "shared/lib/components/Common/HelpInfo";
-import { useGlobalState } from "../../../store/store";
-import useVaultActivity from "../../../hooks/useVaultActivity";
+import CapBar from "shared/lib/components/Deposit/CapBar";
+import { useStakingPoolData } from "shared/lib/hooks/web3DataContext";
+import { useGlobalState } from "shared/lib/store/store";
+import { useWeb3Wallet } from "webapp/lib/hooks/useWeb3Wallet";
+import useTransactions from "shared/lib/hooks/useTransactions";
 
 const ModalContent = styled(motion.div)`
   display: flex;
   flex-direction: column;
   height: 100%;
   width: 100%;
-`;
-
-const InfoLabel = styled(SecondaryText)`
-  line-height: 16px;
 `;
 
 const ModeList = ["deposits", "staking"] as const;
@@ -52,14 +57,20 @@ const YourPositionModal: React.FC = () => {
   const vaultOption = vaultPositionModal.vaultOption || VaultList[0];
   const vaultVersion = vaultPositionModal.vaultVersion;
   const premiumDecimals = getAssetDecimals("USDC");
-  const activities = useVaultActivity(vaultOption!, vaultVersion);
+  const { transactions } = useTransactions();
 
-  const totalYields = activities.activities.map((activity) => {
-    return (activity.type == "sales")
-      ? Number(activity.premium)
-      :0
-  }).reduce((totalYield, roundlyYield) => totalYield + roundlyYield, 0) 
-  / (10 ** premiumDecimals)  
+  const accountYield = useMemo(() => {
+    const yields = transactions
+      .filter((transaction) => transaction.type === "distribute")
+      .reduce(
+        (total, transaction) => total.add(transaction.amount),
+        BigNumber.from(0)
+      );
+
+    return parseFloat(
+      formatSignificantDecimals(formatUnits(yields, premiumDecimals), 2)
+    );
+  }, [transactions, premiumDecimals]);
 
   const color = getVaultColor(vaultOption);
   const asset = getAssets(vaultOption);
@@ -68,33 +79,11 @@ const YourPositionModal: React.FC = () => {
 
   const { vaultAccounts } = useVaultAccounts(vaultVersion);
 
-  const [mode, setMode] = useState<ModeType>(ModeList[0]);
-
-  const roi = useMemo(() => {
-    const vaultAccount = vaultAccounts[vaultOption];
-
-    if (
-      !vaultAccount ||
-      isPracticallyZero(vaultAccount.totalDeposits, decimals)
-    ) {
-      return 0;
-    }
-
-    return (
-      (parseFloat(
-        formatUnits(
-          vaultAccount.totalBalance.sub(vaultAccount.totalDeposits),
-          decimals
-        )
-      ) /
-        parseFloat(formatUnits(vaultAccount.totalDeposits, decimals))) *
-      100
-    );
-  }, [vaultAccounts, vaultOption, decimals]);
+  const [mode] = useState<ModeType>(ModeList[0]);
 
   const vaultAccount = vaultAccounts[vaultOption];
 
-  const [investedInStrategy, queuedAmount, yieldEarned] = useMemo(() => {
+  const [investedInStrategy, queuedAmount] = useMemo(() => {
     switch (vaultVersion) {
       case "v1":
         if (!vaultAccount) {
@@ -139,7 +128,7 @@ const YourPositionModal: React.FC = () => {
               <Title fontSize={40} lineHeight={40}>
                 {vaultAccount
                   ? formatBigNumber(vaultAccount.totalBalance, decimals)
-                  : "0.00"} 
+                  : "0.00"}
               </Title>
             </BaseModalContentColumn>
             <BaseModalContentColumn marginTop={8}>
@@ -191,8 +180,7 @@ const YourPositionModal: React.FC = () => {
               <div className="d-flex w-100 align-items-center ">
                 <SecondaryText>Yield Earned</SecondaryText>
                 <Title className="ml-auto">
-                  {totalYields.toFixed(2)}{" "}
-                  {getAssetDisplay("USDC")}
+                  {accountYield} {getAssetDisplay("USDC")}
                 </Title>
               </div>
             </BaseModalContentColumn>
@@ -207,10 +195,8 @@ const YourPositionModal: React.FC = () => {
     investedInStrategy,
     mode,
     queuedAmount,
-    roi,
     vaultAccount,
-    vaultVersion,
-    yieldEarned,
+    accountYield,
   ]);
 
   return (
