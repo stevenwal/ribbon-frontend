@@ -259,7 +259,6 @@ const DepositPage = () => {
   /**
    * Redirect to homepage if no clear vault is chosen
    */
-  
   if (!vaultOption) {
     return <Redirect to="/" />;
   }
@@ -267,7 +266,6 @@ const DepositPage = () => {
   if (!auth || !auth.includes(vaultOption)) {
     return <Redirect to="/" />;
   }
-
 
   return (
     <>
